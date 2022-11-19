@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from torch import nn
-from .utils.util import check_parameters
+from .utils.utils import check_parameters
 
 
 class GlobalLayerNorm(nn.Module):
