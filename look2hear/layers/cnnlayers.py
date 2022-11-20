@@ -144,7 +144,10 @@ class NormAct(nn.Module):
     """
 
     def __init__(
-        self, out_chan, norm_type="gLN", act_type="prelu",
+        self,
+        out_chan,
+        norm_type="gLN",
+        act_type="prelu",
     ):
         """
         :param nOut: number of output channels
@@ -233,9 +236,7 @@ class Concat(nn.Module):
         self.ain_chan = ain_chan
         self.vin_chan = vin_chan
         # project
-        self.conv1d = nn.Sequential(
-            nn.Conv1d(ain_chan + vin_chan, out_chan, 1), nn.PReLU()
-        )
+        self.conv1d = nn.Sequential(nn.Conv1d(ain_chan + vin_chan, out_chan, 1), nn.PReLU())
 
     def forward(self, a, v):
         # up-sample video features
@@ -375,9 +376,7 @@ class FRCNNBlock(nn.Module):
             wav_length = output[i].shape[-1]
             y = torch.cat(
                 (
-                    self.fuse_layers[i][0](output[i - 1])
-                    if i - 1 >= 0
-                    else torch.Tensor().to(output1.device),
+                    self.fuse_layers[i][0](output[i - 1]) if i - 1 >= 0 else torch.Tensor().to(output1.device),
                     output[i],
                     F.interpolate(output[i + 1], size=wav_length, mode="nearest")
                     if i + 1 < self.depth
@@ -481,14 +480,10 @@ class BottomupTCN(nn.Module):
         )
         self.depth = upsampling_depth
         self.spp_dw = nn.ModuleList([])
-        self.spp_dw.append(
-            Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=True)
-        )
+        self.spp_dw.append(Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=True))
         # ----------Down Sample Layer----------
         for i in range(1, upsampling_depth):
-            self.spp_dw.append(
-                Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=False)
-            )
+            self.spp_dw.append(Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=False))
 
     def forward(self, x):
         residual = x.clone()
@@ -580,9 +575,7 @@ class Bottomup_Concat_Topdown(nn.Module):
             wav_length = bottomup[i].shape[-1]
             y = torch.cat(
                 (
-                    self.fuse_layers[i][0](bottomup[i - 1])
-                    if i - 1 >= 0
-                    else torch.Tensor().to(bottomup[i].device),
+                    self.fuse_layers[i][0](bottomup[i - 1]) if i - 1 >= 0 else torch.Tensor().to(bottomup[i].device),
                     bottomup[i],
                     F.interpolate(bottomup[i + 1], size=wav_length, mode="nearest")
                     if i + 1 < self.depth
@@ -669,13 +662,9 @@ class Bottomup_Concat_Topdown_TCN(nn.Module):
             wav_length = bottomup[i].shape[-1]
             y = torch.cat(
                 (
-                    bottomup[i - 1]
-                    if i - 1 >= 0
-                    else torch.Tensor().to(bottomup[i].device),
+                    bottomup[i - 1] if i - 1 >= 0 else torch.Tensor().to(bottomup[i].device),
                     bottomup[i],
-                    bottomup[i + 1]
-                    if i + 1 < self.depth
-                    else torch.Tensor().to(bottomup[i].device),
+                    bottomup[i + 1] if i + 1 < self.depth else torch.Tensor().to(bottomup[i].device),
                     F.interpolate(topdown, size=wav_length, mode="nearest"),
                 ),
                 dim=1,
@@ -710,14 +699,10 @@ class FRCNNBlockTCN(nn.Module):
         )
         self.depth = upsampling_depth
         self.spp_dw = nn.ModuleList([])
-        self.spp_dw.append(
-            Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=True)
-        )
+        self.spp_dw.append(Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=True))
         # ----------Down Sample Layer----------
         for i in range(1, upsampling_depth):
-            self.spp_dw.append(
-                Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=False)
-            )
+            self.spp_dw.append(Video1DConv(out_chan, out_chan, 3, skip_con=False, first_block=False))
         # ----------Fusion Layer----------
         self.fuse_layers = nn.ModuleList([])
         for i in range(upsampling_depth):
@@ -789,9 +774,7 @@ class FRCNNBlockTCN(nn.Module):
                 (
                     output[i - 1] if i - 1 >= 0 else torch.Tensor().to(output1.device),
                     output[i],
-                    output[i + 1]
-                    if i + 1 < self.depth
-                    else torch.Tensor().to(output1.device),
+                    output[i + 1] if i + 1 < self.depth else torch.Tensor().to(output1.device),
                 ),
                 dim=1,
             )
@@ -820,15 +803,9 @@ class TAC(nn.Module):
     def __init__(self, input_dim, hidden_dim=384, activation="prelu", norm_type="gLN"):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.input_tf = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim), activations.get(activation)()
-        )
-        self.avg_tf = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim), activations.get(activation)()
-        )
-        self.concat_tf = nn.Sequential(
-            nn.Linear(2 * hidden_dim, input_dim), activations.get(activation)()
-        )
+        self.input_tf = nn.Sequential(nn.Linear(input_dim, hidden_dim), activations.get(activation)())
+        self.avg_tf = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), activations.get(activation)())
+        self.concat_tf = nn.Sequential(nn.Linear(2 * hidden_dim, input_dim), activations.get(activation)())
         self.norm = normalizations.get(norm_type)(input_dim)
 
     def forward(self, x, valid_mics=None):
@@ -850,11 +827,9 @@ class TAC(nn.Module):
         if valid_mics is None:
             valid_mics = torch.LongTensor([nmics] * batch_size)
         # First operation: transform the input for each frame and independently on each mic channel.
-        output = self.input_tf(
-            x.permute(0, 3, 4, 1, 2).reshape(
-                batch_size * nmics * chunk_size * n_chunks, channels
-            )
-        ).reshape(batch_size, chunk_size, n_chunks, nmics, self.hidden_dim)
+        output = self.input_tf(x.permute(0, 3, 4, 1, 2).reshape(batch_size * nmics * chunk_size * n_chunks, channels)).reshape(
+            batch_size, chunk_size, n_chunks, nmics, self.hidden_dim
+        )
 
         # Mean pooling across channels
         if valid_mics.max() == 0:
@@ -862,33 +837,22 @@ class TAC(nn.Module):
             mics_mean = output.mean(1)
         else:
             # Only consider valid channels in each batch element: each example can have different number of microphones.
-            mics_mean = [
-                output[b, :, :, : valid_mics[b]].mean(2).unsqueeze(0)
-                for b in range(batch_size)
-            ]  # 1, dim1*dim2, H
+            mics_mean = [output[b, :, :, : valid_mics[b]].mean(2).unsqueeze(0) for b in range(batch_size)]  # 1, dim1*dim2, H
             mics_mean = torch.cat(mics_mean, 0)  # B*dim1*dim2, H
 
         # The average is processed by a non-linear transform
-        mics_mean = self.avg_tf(
-            mics_mean.reshape(batch_size * chunk_size * n_chunks, self.hidden_dim)
-        )
-        mics_mean = (
-            mics_mean.reshape(batch_size, chunk_size, n_chunks, self.hidden_dim)
-            .unsqueeze(3)
-            .expand_as(output)
-        )
+        mics_mean = self.avg_tf(mics_mean.reshape(batch_size * chunk_size * n_chunks, self.hidden_dim))
+        mics_mean = mics_mean.reshape(batch_size, chunk_size, n_chunks, self.hidden_dim).unsqueeze(3).expand_as(output)
 
         # Concatenate the transformed average in each channel with the original feats and
         # project back to same number of features
         output = torch.cat([output, mics_mean], -1)
-        output = self.concat_tf(
-            output.reshape(batch_size * chunk_size * n_chunks * nmics, -1)
-        ).reshape(batch_size, chunk_size, n_chunks, nmics, -1)
-        output = self.norm(
-            output.permute(0, 3, 4, 1, 2).reshape(
-                batch_size * nmics, -1, chunk_size, n_chunks
-            )
-        ).reshape(batch_size, nmics, -1, chunk_size, n_chunks)
+        output = self.concat_tf(output.reshape(batch_size * chunk_size * n_chunks * nmics, -1)).reshape(
+            batch_size, chunk_size, n_chunks, nmics, -1
+        )
+        output = self.norm(output.permute(0, 3, 4, 1, 2).reshape(batch_size * nmics, -1, chunk_size, n_chunks)).reshape(
+            batch_size, nmics, -1, chunk_size, n_chunks
+        )
 
         output += x
         return output

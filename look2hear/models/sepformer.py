@@ -4,20 +4,15 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-05-26 18:07:13
 ###
-###
-# Author: Kai Li
-# Date: 2022-02-12 15:21:45
-# Email: lk21@mails.tsinghua.edu.cn
-# LastEditTime: 2022-03-20 09:29:39
-###
 import math
+import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import copy
+
 from typing import Optional
-from .base_model import BaseModel
 from . import normalizations
+from .base_model import BaseModel
 
 
 class Encoder(nn.Module):
@@ -63,9 +58,7 @@ class PositionalEncoding(nn.Module):
         self.max_len = max_len
         pe = torch.zeros(self.max_len, input_size, requires_grad=False)
         positions = torch.arange(0, self.max_len).unsqueeze(1).float()
-        denominator = torch.exp(
-            torch.arange(0, input_size, 2).float() * -(math.log(10000.0) / input_size)
-        )
+        denominator = torch.exp(torch.arange(0, input_size, 2).float() * -(math.log(10000.0) / input_size))
 
         pe[:, 0::2] = torch.sin(positions * denominator)
         pe[:, 1::2] = torch.cos(positions * denominator)
@@ -242,7 +235,12 @@ class PositionalwiseFeedForward(nn.Module):
     """
 
     def __init__(
-        self, d_ffn, input_shape=None, input_size=None, dropout=0.0, activation=nn.ReLU,
+        self,
+        d_ffn,
+        input_shape=None,
+        input_size=None,
+        dropout=0.0,
+        activation=nn.ReLU,
     ):
         super().__init__()
 
@@ -307,11 +305,18 @@ class TransformerEncoderLayer(nn.Module):
         super().__init__()
 
         self.self_att = MultiheadAttention(
-            nhead=nhead, d_model=d_model, dropout=dropout, kdim=kdim, vdim=vdim,
+            nhead=nhead,
+            d_model=d_model,
+            dropout=dropout,
+            kdim=kdim,
+            vdim=vdim,
         )
 
         self.pos_ffn = PositionalwiseFeedForward(
-            d_ffn=d_ffn, input_size=d_model, dropout=dropout, activation=activation,
+            d_ffn=d_ffn,
+            input_size=d_model,
+            dropout=dropout,
+            activation=activation,
         )
 
         self.norm1 = nn.LayerNorm(d_model, eps=1e-6, elementwise_affine=True)
@@ -571,14 +576,8 @@ class TransformerBlock(nn.Module):
                 [0., 0., 0.]])
         """
         seq_len = padded_input.shape[1]
-        mask = (
-            torch.triu(torch.ones((seq_len, seq_len), device=padded_input.device)) == 1
-        ).transpose(0, 1)
-        mask = (
-            mask.float()
-            .masked_fill(mask == 0, float("-inf"))
-            .masked_fill(mask == 1, float(0.0))
-        )
+        mask = (torch.triu(torch.ones((seq_len, seq_len), device=padded_input.device)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float("-inf")).masked_fill(mask == 1, float(0.0))
         return mask.detach().to(padded_input.device)
 
 
@@ -703,7 +702,10 @@ class Dual_Path_Model(nn.Module):
             self.dual_mdl.append(
                 copy.deepcopy(
                     Dual_Computation_Block(
-                        intra_model, inter_model, out_channels, norm,
+                        intra_model,
+                        inter_model,
+                        out_channels,
+                        norm,
                     )
                 )
             )
@@ -714,9 +716,7 @@ class Dual_Path_Model(nn.Module):
         self.activation = nn.ReLU()
         # gated output layer
         self.output = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1), nn.Tanh())
-        self.output_gate = nn.Sequential(
-            nn.Conv1d(out_channels, out_channels, 1), nn.Sigmoid()
-        )
+        self.output_gate = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1), nn.Sigmoid())
 
     def forward(self, x):
         """Returns the output tensor.

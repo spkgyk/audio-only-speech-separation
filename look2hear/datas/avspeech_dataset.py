@@ -5,18 +5,13 @@
 # LastEditTime: 2022-03-16 06:36:17
 ###
 
-import numpy as np
-import pandas as pd
-import soundfile as sf
-import torch
-from torch import hub
-from torch.utils.data import Dataset, DataLoader
-import random as random
 import os
-import shutil
-import zipfile
 import json
-from typing import Dict, Iterable, List, Iterator
+import torch
+import numpy as np
+import soundfile as sf
+
+from torch.utils.data import Dataset
 from .transform import get_preprocessing_pipelines
 
 
@@ -44,9 +39,7 @@ class AVSpeechDataset(Dataset):
         self.json_dir = json_dir
         self.sample_rate = sample_rate
         self.normalize_audio = normalize_audio
-        self.lipreading_preprocessing_func = get_preprocessing_pipelines()[
-            "train" if segment != None else "val"
-        ]
+        self.lipreading_preprocessing_func = get_preprocessing_pipelines()["train" if segment != None else "val"]
         if segment is None:
             self.seg_len = None
             self.fps_len = None
@@ -56,9 +49,7 @@ class AVSpeechDataset(Dataset):
         self.n_src = n_src
         self.test = self.seg_len is None
         mix_json = os.path.join(json_dir, "mix.json")
-        sources_json = [
-            os.path.join(json_dir, source + ".json") for source in ["s1", "s2"]
-        ]
+        sources_json = [os.path.join(json_dir, source + ".json") for source in ["s1", "s2"]]
 
         with open(mix_json, "r") as f:
             mix_infos = json.load(f)
@@ -135,15 +126,9 @@ class AVSpeechDataset(Dataset):
             else:
                 stop = rand_start + self.seg_len
 
-            mix_source, _ = sf.read(
-                self.mix[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
-            source = sf.read(
-                self.sources[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )[0]
-            source_mouth = self.lipreading_preprocessing_func(
-                np.load(self.sources[idx][1])["data"]
-            )[:, : self.fps_len]
+            mix_source, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
+            source = sf.read(self.sources[idx][0], start=rand_start, stop=stop, dtype="float32")[0]
+            source_mouth = self.lipreading_preprocessing_func(np.load(self.sources[idx][1])["data"])[:, : self.fps_len]
 
             source = torch.from_numpy(source)
             mixture = torch.from_numpy(mix_source)
@@ -161,23 +146,14 @@ class AVSpeechDataset(Dataset):
             else:
                 stop = rand_start + self.seg_len
 
-            mix_source, _ = sf.read(
-                self.mix[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
+            mix_source, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
             sources = []
             for src in self.sources[idx]:
                 # import pdb; pdb.set_trace()
-                sources.append(
-                    sf.read(src[0], start=rand_start, stop=stop, dtype="float32")[0]
-                )
+                sources.append(sf.read(src[0], start=rand_start, stop=stop, dtype="float32")[0])
             # import pdb; pdb.set_trace()
             sources_mouths = torch.stack(
-                [
-                    torch.from_numpy(
-                        self.lipreading_preprocessing_func(np.load(src[1])["data"])
-                    )
-                    for src in self.sources[idx]
-                ]
+                [torch.from_numpy(self.lipreading_preprocessing_func(np.load(src[1])["data"])) for src in self.sources[idx]]
             )[:, : self.fps_len]
             # import pdb; pdb.set_trace()
             sources = torch.stack([torch.from_numpy(source) for source in sources])

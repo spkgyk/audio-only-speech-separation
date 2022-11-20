@@ -4,18 +4,16 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-02-18 18:16:16
 ###
-
-import os
-import sys
-import torch
-import torch.nn.functional as F
-import torchaudio
-import speechbrain as sb
-import numpy as np
-from speechbrain.dataio.batch import PaddedBatch
 import warnings
 
 warnings.filterwarnings("ignore")
+
+import os
+import torch
+import numpy as np
+import speechbrain as sb
+
+from speechbrain.dataio.batch import PaddedBatch
 
 
 class SBAudioDatset:
@@ -30,7 +28,9 @@ class SBAudioDatset:
         self.num_workers = num_workers
         self.create()
 
-    def create(self,):
+    def create(
+        self,
+    ):
         """Creates data processing pipeline"""
 
         # 1. Define datasets
@@ -61,9 +61,7 @@ class SBAudioDatset:
         sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline_mix)
         sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline_s1)
         sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline_s2)
-        sb.dataio.dataset.set_output_keys(
-            datasets, ["id", "mix_sig", "s1_sig", "s2_sig"]
-        )
+        sb.dataio.dataset.set_output_keys(datasets, ["id", "mix_sig", "s1_sig", "s2_sig"])
 
         # 3. Provide audio dataloader
         self.train = torch.utils.data.DataLoader(
@@ -71,9 +69,7 @@ class SBAudioDatset:
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             collate_fn=PaddedBatch,
-            worker_init_fn=lambda x: np.random.seed(
-                int.from_bytes(os.urandom(4), "little") + x
-            ),
+            worker_init_fn=lambda x: np.random.seed(int.from_bytes(os.urandom(4), "little") + x),
         )
 
         self.val = torch.utils.data.DataLoader(
@@ -81,9 +77,7 @@ class SBAudioDatset:
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             collate_fn=PaddedBatch,
-            worker_init_fn=lambda x: np.random.seed(
-                int.from_bytes(os.urandom(4), "little") + x
-            ),
+            worker_init_fn=lambda x: np.random.seed(int.from_bytes(os.urandom(4), "little") + x),
         )
 
         self.test = torch.utils.data.DataLoader(
@@ -91,9 +85,7 @@ class SBAudioDatset:
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             collate_fn=PaddedBatch,
-            worker_init_fn=lambda x: np.random.seed(
-                int.from_bytes(os.urandom(4), "little") + x
-            ),
+            worker_init_fn=lambda x: np.random.seed(int.from_bytes(os.urandom(4), "little") + x),
         )
 
 

@@ -33,5 +33,5 @@ __all__ = [
     "RichProgressBarTheme",
     "MyRichProgressBar",
     "BatchesProcessedColumn",
-    "MyMetricsTextColumn"
+    "MyMetricsTextColumn",
 ]

@@ -6,10 +6,11 @@
 ###
 
 import torch
-from torch.autograd import Variable
-import torch.nn as nn
 import numpy as np
+import torch.nn as nn
+
 from typing import List
+from torch.autograd import Variable
 from torch.nn.modules.batchnorm import _BatchNorm
 
 
@@ -71,16 +72,12 @@ class BatchNorm(_BatchNorm):
 
     def _check_input_dim(self, input):
         if input.dim() < 2 or input.dim() > 4:
-            raise ValueError(
-                "expected 4D or 3D input (got {}D input)".format(input.dim())
-            )
+            raise ValueError("expected 4D or 3D input (got {}D input)".format(input.dim()))
 
 
 class CumulativeLayerNorm(nn.LayerNorm):
     def __init__(self, dim, elementwise_affine=True):
-        super(CumulativeLayerNorm, self).__init__(
-            dim, elementwise_affine=elementwise_affine
-        )
+        super(CumulativeLayerNorm, self).__init__(dim, elementwise_affine=elementwise_affine)
 
     def forward(self, x):
         # x: N x C x L
@@ -123,18 +120,14 @@ class CumulateLN(nn.Module):
         entry_cnt = entry_cnt.view(1, -1).expand_as(cum_sum)
 
         cum_mean = cum_sum / entry_cnt  # B, T
-        cum_var = (cum_pow_sum - 2 * cum_mean * cum_sum) / entry_cnt + cum_mean.pow(
-            2
-        )  # B, T
+        cum_var = (cum_pow_sum - 2 * cum_mean * cum_sum) / entry_cnt + cum_mean.pow(2)  # B, T
         cum_std = (cum_var + self.eps).sqrt()  # B, T
 
         cum_mean = cum_mean.unsqueeze(1)
         cum_std = cum_std.unsqueeze(1)
 
         x = (input - cum_mean.expand_as(input)) / cum_std.expand_as(input)
-        return x * self.gain.expand_as(x).type(x.type()) + self.bias.expand_as(x).type(
-            x.type()
-        )
+        return x * self.gain.expand_as(x).type(x.type()) + self.bias.expand_as(x).type(x.type())
 
 
 # Aliases.
@@ -161,11 +154,7 @@ def get(identifier):
     elif isinstance(identifier, str):
         cls = globals().get(identifier)
         if cls is None:
-            raise ValueError(
-                "Could not interpret normalization identifier: " + str(identifier)
-            )
+            raise ValueError("Could not interpret normalization identifier: " + str(identifier))
         return cls
     else:
-        raise ValueError(
-            "Could not interpret normalization identifier: " + str(identifier)
-        )
+        raise ValueError("Could not interpret normalization identifier: " + str(identifier))

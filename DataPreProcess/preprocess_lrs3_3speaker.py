@@ -4,23 +4,20 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-07-29 05:55:07
 ###
-import argparse
-import json
 import os
+import json
+import argparse
 import soundfile as sf
+
 from tqdm import tqdm
 
 
 def get_mouth_path(in_mouth_dir, wav_file, spk, data_type):
     wav_file = wav_file.replace(".wav", "").split("_")
     if spk == "s1":
-        file_path = os.path.join(
-            in_mouth_dir, "{}_{}.npz".format(wav_file[0], wav_file[1])
-        )
+        file_path = os.path.join(in_mouth_dir, "{}_{}.npz".format(wav_file[0], wav_file[1]))
     else:
-        file_path = os.path.join(
-            in_mouth_dir, "{}_{}.npz".format(wav_file[3], wav_file[4])
-        )
+        file_path = os.path.join(in_mouth_dir, "{}_{}.npz".format(wav_file[3], wav_file[4]))
     return file_path
 
 
@@ -57,7 +54,10 @@ def preprocess_lrs2_audio(inp_args):
     for data_type in ["tr", "cv", "tt"]:
         for spk in speaker_list:
             preprocess_one_dir(
-                inp_args.in_dir, inp_args.out_dir, data_type, spk,
+                inp_args.in_dir,
+                inp_args.out_dir,
+                data_type,
+                spk,
             )
 
 
@@ -69,9 +69,7 @@ if __name__ == "__main__":
         default=None,
         help="Directory path of audio including tr, cv and tt",
     )
-    parser.add_argument(
-        "--out_dir", type=str, default=None, help="Directory path to put output files"
-    )
+    parser.add_argument("--out_dir", type=str, default=None, help="Directory path to put output files")
     args = parser.parse_args()
     print(args)
     preprocess_lrs2_audio(args)

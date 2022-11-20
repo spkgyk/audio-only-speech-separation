@@ -6,8 +6,8 @@
 ###
 import torch
 import torch.nn as nn
-import math
 import torch.nn.functional as F
+
 from . import normalizations
 from .base_model import BaseModel
 
@@ -71,9 +71,7 @@ class Conv1D_Block(nn.Module):
 
 
 class TCN(nn.Module):
-    def __init__(
-        self, in_channels=128, out_channels=512, kernel_size=3, norm_type="gLN", X=8
-    ):
+    def __init__(self, in_channels=128, out_channels=512, kernel_size=3, norm_type="gLN", X=8):
         super(TCN, self).__init__()
         seq = []
         for i in range(X):
@@ -83,7 +81,7 @@ class TCN(nn.Module):
                     out_channels=out_channels,
                     kernel_size=kernel_size,
                     norm_type=norm_type,
-                    dilation=2 ** i,
+                    dilation=2**i,
                 )
             )
         self.tcn = nn.Sequential(*seq)
@@ -145,9 +143,7 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         view_as = (-1,) + x.shape[-2:]
-        return F.conv_transpose1d(
-            x.reshape(view_as), self._filters, stride=self.stride, padding=self.padding
-        ).view(x.shape[:-2] + (-1,))
+        return F.conv_transpose1d(x.reshape(view_as), self._filters, stride=self.stride, padding=self.padding).view(x.shape[:-2] + (-1,))
 
 
 class ConvTasNet(BaseModel):
@@ -213,16 +209,10 @@ class ConvTasNet(BaseModel):
         w = self.separation(w)
         m = self.mask(w)
         m = self.non_linear(m)
-        d = x.unsqueeze(1) * m.reshape(
-            batch, self.num_spks, -1, times
-        )  # [B, N*n_src, T]
+        d = x.unsqueeze(1) * m.reshape(batch, self.num_spks, -1, times)  # [B, N*n_src, T]
         # s = torch.cat([self.decoder(d[i]) for i in range(self.num_spks)],dim=1).view(batch*self.num_spks, -1)
         s = self.decoder(d.reshape(batch * self.num_spks, -1, times))
-        separate_output = (
-            s[:, self.win - self.stride : -(rest + self.win - self.stride)]
-            .contiguous()
-            .view(batch, self.num_spks, -1)
-        )
+        separate_output = s[:, self.win - self.stride : -(rest + self.win - self.stride)].contiguous().view(batch, self.num_spks, -1)
         return separate_output
 
     def get_model_args(self):

@@ -6,23 +6,19 @@
 ###
 import os
 import json
-from tkinter.tix import Tree
-import numpy as np
-from typing import Any, Tuple
-import soundfile as sf
 import torch
-from pytorch_lightning import LightningDataModule
-from pytorch_lightning.core.mixins import HyperparametersMixin
-from torch.utils.data import ConcatDataset, DataLoader, Dataset
-from typing import Dict, Iterable, List, Iterator
+import numpy as np
+import soundfile as sf
+
+from rich import print as rprint
+from torch.utils.data import DataLoader, Dataset
 from .transform import get_preprocessing_pipelines
-from rich import print
 from pytorch_lightning.utilities import rank_zero_only
 
 
 @rank_zero_only
 def print_(message: str):
-    print(message)
+    rprint(message)
 
 
 def normalize_tensor_wav(wav_tensor, eps=1e-8, std=None):
@@ -53,9 +49,7 @@ class LRS3Dataset(Dataset):
         self.sample_rate = sample_rate
         self.normalize_audio = normalize_audio
         self.audio_only = audio_only
-        self.lipreading_preprocessing_func = get_preprocessing_pipelines()[
-            "train" if segment != None else "val"
-        ]
+        self.lipreading_preprocessing_func = get_preprocessing_pipelines()["train" if segment != None else "val"]
         if segment is None:
             self.seg_len = None
             self.fps_len = None
@@ -65,9 +59,7 @@ class LRS3Dataset(Dataset):
         self.n_src = n_src
         self.test = self.seg_len is None
         mix_json = os.path.join(json_dir, "mix_noise.json")
-        sources_json = [
-            os.path.join(json_dir, source + ".json") for source in ["s1", "s2", "s3"]
-        ]
+        sources_json = [os.path.join(json_dir, source + ".json") for source in ["s1", "s2", "s3"]]
 
         with open(mix_json, "r") as f:
             mix_infos = json.load(f)
@@ -141,13 +133,9 @@ class LRS3Dataset(Dataset):
             else:
                 stop = rand_start + self.seg_len
             # Load mixture
-            x, _ = sf.read(
-                self.mix[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
+            x, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
             # Load sources
-            s, _ = sf.read(
-                self.sources[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
+            s, _ = sf.read(self.sources[idx][0], start=rand_start, stop=stop, dtype="float32")
             # torch from numpy
             target = torch.from_numpy(s)
             mixture = torch.from_numpy(x)
@@ -167,15 +155,11 @@ class LRS3Dataset(Dataset):
             else:
                 stop = rand_start + self.seg_len
             # Load mixture
-            x, _ = sf.read(
-                self.mix[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
+            x, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
             # Load sources
             source_arrays = []
             for src in self.sources:
-                s, _ = sf.read(
-                    src[idx][0], start=rand_start, stop=stop, dtype="float32"
-                )
+                s, _ = sf.read(src[idx][0], start=rand_start, stop=stop, dtype="float32")
                 source_arrays.append(s)
             sources = torch.from_numpy(np.vstack(source_arrays))
             mixture = torch.from_numpy(x)
@@ -198,15 +182,9 @@ class LRS3Dataset(Dataset):
             else:
                 stop = rand_start + self.seg_len
 
-            mix_source, _ = sf.read(
-                self.mix[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
-            source = sf.read(
-                self.sources[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )[0]
-            source_mouth = self.lipreading_preprocessing_func(
-                np.load(self.sources[idx][1])["data"]
-            )[:, : self.fps_len]
+            mix_source, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
+            source = sf.read(self.sources[idx][0], start=rand_start, stop=stop, dtype="float32")[0]
+            source_mouth = self.lipreading_preprocessing_func(np.load(self.sources[idx][1])["data"])[:, : self.fps_len]
 
             source = torch.from_numpy(source)
             mixture = torch.from_numpy(mix_source)
@@ -227,23 +205,14 @@ class LRS3Dataset(Dataset):
             else:
                 stop = rand_start + self.seg_len
 
-            mix_source, _ = sf.read(
-                self.mix[idx][0], start=rand_start, stop=stop, dtype="float32"
-            )
+            mix_source, _ = sf.read(self.mix[idx][0], start=rand_start, stop=stop, dtype="float32")
             sources = []
             for src in self.sources[idx]:
                 # import pdb; pdb.set_trace()
-                sources.append(
-                    sf.read(src[0], start=rand_start, stop=stop, dtype="float32")[0]
-                )
+                sources.append(sf.read(src[0], start=rand_start, stop=stop, dtype="float32")[0])
             # import pdb; pdb.set_trace()
             sources_mouths = torch.stack(
-                [
-                    torch.from_numpy(
-                        self.lipreading_preprocessing_func(np.load(src[1])["data"])
-                    )
-                    for src in self.sources[idx]
-                ]
+                [torch.from_numpy(self.lipreading_preprocessing_func(np.load(src[1])["data"])) for src in self.sources[idx]]
             )[:, : self.fps_len]
             # import pdb; pdb.set_trace()
             sources = torch.stack([torch.from_numpy(source) for source in sources])

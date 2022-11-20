@@ -5,12 +5,13 @@
 # LastEditTime: 2021-06-22 15:26:43
 ###
 
-import torch
-from torch.utils import data
-import json
 import os
+import json
+import torch
 import numpy as np
 import soundfile as sf
+
+from torch.utils import data
 
 
 def normalize_tensor_wav(wav_tensor, eps=1e-8, std=None):
@@ -37,9 +38,7 @@ class AudioDataset(data.Dataset):
 
     dataset_name = "wsj0-mix"
 
-    def __init__(
-        self, json_dir, n_src=2, sample_rate=8000, segment=4.0, normalize_audio=False
-    ):
+    def __init__(self, json_dir, n_src=2, sample_rate=8000, segment=4.0, normalize_audio=False):
         super().__init__()
         # Task setting
         self.json_dir = json_dir
@@ -54,10 +53,7 @@ class AudioDataset(data.Dataset):
         self.like_test = self.seg_len is None
         # Load json files
         mix_json = os.path.join(json_dir, "mix.json")
-        sources_json = [
-            os.path.join(json_dir, source + ".json")
-            for source in [f"s{n+1}" for n in range(n_src)]
-        ]
+        sources_json = [os.path.join(json_dir, source + ".json") for source in [f"s{n+1}" for n in range(n_src)]]
         with open(mix_json, "r") as f:
             mix_infos = json.load(f)
         sources_infos = []
@@ -111,9 +107,7 @@ class AudioDataset(data.Dataset):
                 # Target is filled with zeros if n_src > default_nsrc
                 s = np.zeros((seg_len,))
             else:
-                s, _ = sf.read(
-                    src[idx][0], start=rand_start, stop=stop, dtype="float32"
-                )
+                s, _ = sf.read(src[idx][0], start=rand_start, stop=stop, dtype="float32")
             source_arrays.append(s)
         sources = torch.from_numpy(np.vstack(source_arrays))
         mixture = torch.from_numpy(x)

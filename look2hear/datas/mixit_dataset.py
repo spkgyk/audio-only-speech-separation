@@ -5,13 +5,14 @@
 # LastEditTime: 2021-07-12 06:37:47
 ###
 
-import torch
-from torch.utils import data
-import json
 import os
+import json
+import torch
 import numpy as np
 import soundfile as sf
+
 from random import sample
+from torch.utils.data import Dataset
 
 
 def normalize_tensor_wav(wav_tensor, eps=1e-8, std=None):
@@ -21,12 +22,10 @@ def normalize_tensor_wav(wav_tensor, eps=1e-8, std=None):
     return (wav_tensor - mean) / (std + eps)
 
 
-class MixITDataset(data.Dataset):
+class MixITDataset(Dataset):
     dataset_name = "MixIT"
 
-    def __init__(
-        self, json_dir, n_src=4, sample_rate=8000, segment=4.0, normalize_audio=False
-    ):
+    def __init__(self, json_dir, n_src=4, sample_rate=8000, segment=4.0, normalize_audio=False):
         super().__init__()
         # Task setting
         self.json_dir = json_dir
@@ -41,10 +40,7 @@ class MixITDataset(data.Dataset):
         self.like_test = self.seg_len is None
         # Load json files
         mix_json = os.path.join(json_dir, "mix.json")
-        sources_json = [
-            os.path.join(json_dir, source + ".json")
-            for source in [f"s{n+1}" for n in range(n_src)]
-        ]
+        sources_json = [os.path.join(json_dir, source + ".json") for source in [f"s{n+1}" for n in range(n_src)]]
         with open(mix_json, "r") as f:
             mix_infos = json.load(f)
         sources_infos = []
@@ -98,9 +94,7 @@ class MixITDataset(data.Dataset):
                 # Target is filled with zeros if n_src > default_nsrc
                 s = np.zeros((seg_len,))
             else:
-                s, _ = sf.read(
-                    src[idx][0], start=rand_start, stop=stop, dtype="float32"
-                )
+                s, _ = sf.read(src[idx][0], start=rand_start, stop=stop, dtype="float32")
             source_arrays.append(s)
 
         index = set(range(self.n_src))

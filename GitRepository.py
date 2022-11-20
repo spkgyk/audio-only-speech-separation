@@ -6,15 +6,15 @@
 ###
 import os
 from git.repo import Repo
-from git.repo.fun import is_git_dir
 from rich import print
+
 
 class GitRepository(object):
     """
     git仓库管理
     """
 
-    def __init__(self, local_path, repo_url, branch='dev'):
+    def __init__(self, local_path, repo_url, branch="dev"):
         self.local_path = local_path
         self.repo_url = repo_url
         self.repo = None
@@ -47,12 +47,14 @@ class GitRepository(object):
         self.repo.git.add("--all")
         self.repo.index.commit(COMMIT_MESSAGE)
 
-        origin = self.repo.remote(name='origin')
+        origin = self.repo.remote(name="origin")
         origin.push()
         print('A new commit "{}" is pushed successfully!'.format(COMMIT_MESSAGE))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--message",

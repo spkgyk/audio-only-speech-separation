@@ -6,8 +6,8 @@
 ###
 import torch
 import pytorch_lightning as pl
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from collections.abc import MutableMapping
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 def flatten_dict(d, parent_key="", sep="_"):
@@ -132,20 +132,14 @@ class AudioLightningModule(pl.LightningModule):
             prog_bar=True,
             sync_dist=True,
         )
-        self.logger.experiment.add_scalar(
-            "learning_rate", self.optimizer.param_groups[0]["lr"], self.current_epoch
-        )
-        self.logger.experiment.add_scalar(
-            "val_pit_sisnr", -val_loss, self.current_epoch
-        )
+        self.logger.experiment.add_scalar("learning_rate", self.optimizer.param_groups[0]["lr"], self.current_epoch)
+        self.logger.experiment.add_scalar("val_pit_sisnr", -val_loss, self.current_epoch)
 
         # test
         if (self.trainer.current_epoch) % 10 == 0:
             avg_loss = torch.stack([x["test_loss"] for x in outputs[1]]).mean()
             test_loss = torch.mean(self.all_gather(avg_loss))
-            self.logger.experiment.add_scalar(
-                "test_pit_sisnr", -test_loss, self.current_epoch
-            )
+            self.logger.experiment.add_scalar("test_pit_sisnr", -test_loss, self.current_epoch)
 
     def configure_optimizers(self):
         """Initialize optimizers, batch-wise and epoch-wise schedulers."""

@@ -4,30 +4,22 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-06-13 12:11:15
 ###
-from rich import print
-from dataclasses import dataclass
-from pytorch_lightning.utilities import rank_zero_only
+from rich import print as rprint
 from typing import Union
-from pytorch_lightning.callbacks.progress.rich_progress import *
-from rich.console import Console, RenderableType
-from rich.progress_bar import ProgressBar
-from rich.style import Style
 from rich.text import Text
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    TaskID,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-    ProgressColumn
-)
-from rich import print, reconfigure
+from rich import reconfigure
+from rich.style import Style
+from dataclasses import dataclass
+from rich.progress import ProgressColumn
+from rich.console import Console, RenderableType
+from pytorch_lightning.utilities import rank_zero_only
+from pytorch_lightning.callbacks.progress.rich_progress import *
+
 
 @rank_zero_only
 def print_only(message: str):
-    print(message)
+    rprint(message)
+
 
 @dataclass
 class RichProgressBarTheme:
@@ -55,6 +47,7 @@ class RichProgressBarTheme:
     processing_speed: Union[str, Style] = "#DC143C"
     metrics: Union[str, Style] = "#228B22"
 
+
 class BatchesProcessedColumn(ProgressColumn):
     def __init__(self, style: Union[str, Style]):
         self.style = style
@@ -63,6 +56,7 @@ class BatchesProcessedColumn(ProgressColumn):
     def render(self, task) -> RenderableType:
         total = task.total if task.total != float("inf") else "--"
         return Text(f"{int(task.completed)}/{int(total)}", style=self.style)
+
 
 class MyMetricsTextColumn(ProgressColumn):
     """A column containing text."""
@@ -86,9 +80,9 @@ class MyMetricsTextColumn(ProgressColumn):
             text += f"{k}: {round(v, 3) if isinstance(v, float) else v} "
         return Text(text, justify="left", style=self._style)
 
+
 class MyRichProgressBar(RichProgressBar):
-    """A progress bar prints metrics at the end of each epoch
-    """
+    """A progress bar prints metrics at the end of each epoch"""
 
     def _init_progress(self, trainer):
         if self.is_enabled and (self.progress is None or self._progress_stopped):
