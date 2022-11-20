@@ -1,0 +1,84 @@
+# Network config
+audionet:
+  audionet_name: Sepformer
+  audionet_config:
+    encoder_kernel_size: 16
+    encoder_in_nchannels: 1
+    encoder_out_nchannels: 256
+    masknet_chunksize: 250
+    masknet_numlayers: 2
+    masknet_norm: gLN
+    masknet_numspks: 2
+    intra_numlayers: 8
+    inter_numlayers: 8
+    intra_nhead: 8
+    inter_nhead: 8
+    intra_dffn: 1024
+    inter_dffn: 1024
+    intra_use_positional: true
+    inter_use_positional: true
+    intra_norm_before: true
+    inter_norm_before: true
+    intra_causal: false
+    inter_causal: false
+
+# Loss config
+loss:
+  train:
+    loss_func: PITLossWrapper
+    sdr_type: pairwise_neg_snr
+    config:
+      pit_from: pw_mtx
+      threshold_byloss: true
+  val:
+    loss_func: PITLossWrapper
+    sdr_type: pairwise_neg_sisdr
+    config:
+      pit_from: pw_mtx
+      threshold_byloss: false
+
+# Training config
+training:
+  system: AudioLightningModule
+  gpus: [0,1]
+  parallel: ddp
+  epochs: 500
+  early_stop:
+    monitor: val_loss/dataloader_idx_0
+    mode: min
+    patience: 30
+    verbose: true
+  
+# Optim config
+optimizer:
+  optim_name: adam
+  lr: 0.001
+  weight_decay: 0
+
+# Sche config
+scheduler: 
+  sche_name: ReduceLROnPlateau
+  sche_config:
+    patience: 15
+    factor: 0.5
+
+# Data config
+datamodule:
+  data_name: WhamDataModule
+  data_config:
+    train_dir: DataPreProcess/Wham/tr
+    valid_dir: DataPreProcess/Wham/cv
+    test_dir: DataPreProcess/Wham/tt
+    n_src: 2
+    sample_rate: 8000
+    fps: 25
+    segment: 4.0
+    normalize_audio: false
+    batch_size: 1
+    num_workers: 8
+    pin_memory: true
+    persistent_workers: false
+    audio_only: true
+
+exp:
+  exp_name: Sepformer-wham-baseline-Noncausal
