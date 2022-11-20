@@ -2,7 +2,7 @@
 # Author: Kai Li
 # Date: 2022-04-06 14:51:43
 # Email: lk21@mails.tsinghua.edu.cn
-# LastEditTime: 2022-06-13 12:10:15
+# LastEditTime: 2022-06-05 14:51:15
 ###
 import os
 import sys
@@ -40,19 +40,6 @@ parser.add_argument(
     help="Full path to save best validation model",
 )
 
-def update_parameter(model, pretrained_dict):
-    model_dict = model.state_dict()
-    update_dict = {}
-    for k, v in pretrained_dict.items():
-        if "sm" in k:
-            update_dict[k] = v
-            # import pdb; pdb.set_trace()
-        else:
-            pass
-    model_dict.update(update_dict)
-    model.load_state_dict(model_dict)
-    return model
-
 def main(config):
     print_only(
         "Instantiating datamodule <{}>".format(config["datamodule"]["data_name"])
@@ -71,8 +58,6 @@ def main(config):
         sample_rate=config["datamodule"]["data_config"]["sample_rate"],
         **config["audionet"]["audionet_config"],
     )
-    state_dict = torch.load(config["training"]["pretrain_dir"], map_location="cpu")["state_dict"]
-    model = update_parameter(model, state_dict)
     # import pdb; pdb.set_trace()
     print_only("Instantiating Optimizer <{}>".format(config["optimizer"]["optim_name"]))
     optimizer = make_optimizer(model.parameters(), **config["optimizer"])

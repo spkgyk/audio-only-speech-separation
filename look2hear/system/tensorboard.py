@@ -16,23 +16,24 @@ TensorBoard Logger
 ------------------
 """
 
-import os
-import torch
 import logging
-
+import os
 from argparse import Namespace
 from typing import Any, Dict, Optional, Union
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
+
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.core.saving import save_hparams_to_yaml
-from pytorch_lightning.utilities.cloud_io import get_filesystem
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
 from pytorch_lightning.utilities import (
     _OMEGACONF_AVAILABLE,
     rank_zero_only,
     rank_zero_warn,
 )
+from pytorch_lightning.utilities.cloud_io import get_filesystem
 
 log = logging.getLogger(__name__)
 
@@ -121,7 +122,9 @@ class TensorBoardLogger(LightningLoggerBase):
         for the constructor's version parameter instead of ``None`` or an int.
         """
         # create a pseudo standard path ala test-tube
-        version = self.version if isinstance(self.version, str) else f"version_{self.version}"
+        version = (
+            self.version if isinstance(self.version, str) else f"version_{self.version}"
+        )
         log_dir = os.path.join(self.root_dir, version)
         return log_dir
 
@@ -193,7 +196,9 @@ class TensorBoardLogger(LightningLoggerBase):
             writer.add_summary(sei)
 
     @rank_zero_only
-    def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None) -> None:
+    def log_metrics(
+        self, metrics: Dict[str, float], step: Optional[int] = None
+    ) -> None:
         assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"
 
         metrics = self._add_prefix(metrics)

@@ -82,8 +82,13 @@ def register_optimizer(custom_opt):
         custom_opt: Custom optimizer to register.
 
     """
-    if custom_opt.__name__ in globals().keys() or custom_opt.__name__.lower() in globals().keys():
-        raise ValueError(f"Activation {custom_opt.__name__} already exists. Choose another name.")
+    if (
+        custom_opt.__name__ in globals().keys()
+        or custom_opt.__name__.lower() in globals().keys()
+    ):
+        raise ValueError(
+            f"Activation {custom_opt.__name__} already exists. Choose another name."
+        )
     globals().update({custom_opt.__name__: custom_opt})
 
 

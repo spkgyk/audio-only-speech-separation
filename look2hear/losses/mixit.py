@@ -100,10 +100,10 @@
 #     print(parts_mixgen(range(4)))
 #     print([item for item in parts_mixgen_bisection(range(4), 2, 2)])
 
-import torch
-
-from torch import nn
+import warnings
 from itertools import combinations
+import torch
+from torch import nn
 
 
 class MixITLossWrapper(nn.Module):
@@ -158,9 +158,13 @@ class MixITLossWrapper(nn.Module):
         assert est_targets.shape[2] == targets.shape[2]
 
         if not self.generalized:
-            min_loss, min_loss_idx, parts = self.best_part_mixit(self.loss_func, est_targets, targets, **kwargs)
+            min_loss, min_loss_idx, parts = self.best_part_mixit(
+                self.loss_func, est_targets, targets, **kwargs
+            )
         else:
-            min_loss, min_loss_idx, parts = self.best_part_mixit_generalized(self.loss_func, est_targets, targets, **kwargs)
+            min_loss, min_loss_idx, parts = self.best_part_mixit_generalized(
+                self.loss_func, est_targets, targets, **kwargs
+            )
         # Take the mean over the batch
         mean_loss = torch.mean(min_loss)
         if not return_est:
@@ -194,7 +198,9 @@ class MixITLossWrapper(nn.Module):
         nmix = targets.shape[1]
         nsrc = est_targets.shape[1]
         if nsrc % nmix != 0:
-            raise ValueError("The mixtures are assumed to contain the same number of sources")
+            raise ValueError(
+                "The mixtures are assumed to contain the same number of sources"
+            )
         nsrcmix = nsrc // nmix
 
         # Generate all unique partitions of size k from a list lst of
@@ -213,7 +219,9 @@ class MixITLossWrapper(nn.Module):
         # Generate all the possible partitions
         parts = list(parts_mixit(range(nsrc), nsrcmix, nmix))
         # Compute the loss corresponding to each partition
-        loss_set = MixITLossWrapper.loss_set_from_parts(loss_func, est_targets=est_targets, targets=targets, parts=parts, **kwargs)
+        loss_set = MixITLossWrapper.loss_set_from_parts(
+            loss_func, est_targets=est_targets, targets=targets, parts=parts, **kwargs
+        )
         # Indexes and values of min losses for each batch element
         min_loss, min_loss_indexes = torch.min(loss_set, dim=1, keepdim=True)
         return min_loss, min_loss_indexes, parts
@@ -263,7 +271,9 @@ class MixITLossWrapper(nn.Module):
         # Generate all the possible partitions
         parts = parts_mixit_gen(range(nsrc))
         # Compute the loss corresponding to each partition
-        loss_set = MixITLossWrapper.loss_set_from_parts(loss_func, est_targets=est_targets, targets=targets, parts=parts, **kwargs)
+        loss_set = MixITLossWrapper.loss_set_from_parts(
+            loss_func, est_targets=est_targets, targets=targets, parts=parts, **kwargs
+        )
         # Indexes and values of min losses for each batch element
         min_loss, min_loss_indexes = torch.min(loss_set, dim=1, keepdim=True)
         return min_loss, min_loss_indexes, parts
@@ -274,7 +284,9 @@ class MixITLossWrapper(nn.Module):
         loss_set = []
         for partition in parts:
             # sum the sources according to the given partition
-            est_mixes = torch.stack([est_targets[:, idx, :].sum(1) for idx in partition], dim=1)
+            est_mixes = torch.stack(
+                [est_targets[:, idx, :].sum(1) for idx in partition], dim=1
+            )
             # get loss for the given partition
             loss_set.append(loss_func(est_mixes, targets, **kwargs)[:, None])
         loss_set = torch.cat(loss_set, dim=1)

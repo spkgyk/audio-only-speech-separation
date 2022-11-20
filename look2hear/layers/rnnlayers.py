@@ -5,17 +5,18 @@
 # LastEditTime: 2021-09-17 09:26:46
 ###
 
-import math
 import torch
+import math
 import inspect
-
 from torch import nn
 from torch import Tensor
+from typing import Tuple
 from typing import Optional
 from torch.nn.functional import fold, unfold
+import numpy as np
 
-from .normalizations import gLN
 from . import activations, normalizations
+from .normalizations import gLN
 
 
 def has_arg(fn, name):
@@ -85,7 +86,7 @@ class SingleRNN(nn.Module):
         return self.hidden_size * (2 if self.bidirectional else 1)
 
     def forward(self, inp):
-        """Input shape [batch, seq, feats]"""
+        """ Input shape [batch, seq, feats] """
         self.rnn.flatten_parameters()  # Enables faster multi-GPU training.
         output = inp
         rnn_output, _ = self.rnn(output)
@@ -156,7 +157,7 @@ class Swish(nn.Module):
 
 
 class Transpose(nn.Module):
-    """Wrapper class of torch.transpose() for Sequential module."""
+    """ Wrapper class of torch.transpose() for Sequential module. """
 
     def __init__(self, shape: tuple):
         super(Transpose, self).__init__()
@@ -183,10 +184,7 @@ class GLU(nn.Module):
 
 class FeedForwardModule(nn.Module):
     def __init__(
-        self,
-        encoder_dim: int = 512,
-        expansion_factor: int = 4,
-        dropout_p: float = 0.1,
+        self, encoder_dim: int = 512, expansion_factor: int = 4, dropout_p: float = 0.1,
     ) -> None:
         super(FeedForwardModule, self).__init__()
         self.sequential = nn.Sequential(
@@ -216,7 +214,9 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         pe = torch.zeros(max_len, d_model, requires_grad=False)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model))
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)
+        )
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
@@ -245,10 +245,7 @@ class RelativeMultiHeadAttention(nn.Module):
     """
 
     def __init__(
-        self,
-        d_model: int = 512,
-        num_heads: int = 16,
-        dropout_p: float = 0.1,
+        self, d_model: int = 512, num_heads: int = 16, dropout_p: float = 0.1,
     ):
         super(RelativeMultiHeadAttention, self).__init__()
         assert d_model % num_heads == 0, "d_model % num_heads should be zero."
@@ -281,12 +278,26 @@ class RelativeMultiHeadAttention(nn.Module):
         batch_size = value.size(0)
 
         query = self.query_proj(query).view(batch_size, -1, self.num_heads, self.d_head)
-        key = self.key_proj(key).view(batch_size, -1, self.num_heads, self.d_head).permute(0, 2, 1, 3)
-        value = self.value_proj(value).view(batch_size, -1, self.num_heads, self.d_head).permute(0, 2, 1, 3)
-        pos_embedding = self.pos_proj(pos_embedding).view(batch_size, -1, self.num_heads, self.d_head)
+        key = (
+            self.key_proj(key)
+            .view(batch_size, -1, self.num_heads, self.d_head)
+            .permute(0, 2, 1, 3)
+        )
+        value = (
+            self.value_proj(value)
+            .view(batch_size, -1, self.num_heads, self.d_head)
+            .permute(0, 2, 1, 3)
+        )
+        pos_embedding = self.pos_proj(pos_embedding).view(
+            batch_size, -1, self.num_heads, self.d_head
+        )
 
-        content_score = torch.matmul((query + self.u_bias).transpose(1, 2), key.transpose(2, 3))
-        pos_score = torch.matmul((query + self.v_bias).transpose(1, 2), pos_embedding.permute(0, 2, 3, 1))
+        content_score = torch.matmul(
+            (query + self.u_bias).transpose(1, 2), key.transpose(2, 3)
+        )
+        pos_score = torch.matmul(
+            (query + self.v_bias).transpose(1, 2), pos_embedding.permute(0, 2, 3, 1)
+        )
         pos_score = self._relative_shift(pos_score)
 
         score = (content_score + pos_score) / self.sqrt_dim
@@ -308,7 +319,9 @@ class RelativeMultiHeadAttention(nn.Module):
         zeros = pos_score.new_zeros(batch_size, num_heads, seq_length1, 1)
         padded_pos_score = torch.cat([zeros, pos_score], dim=-1)
 
-        padded_pos_score = padded_pos_score.view(batch_size, num_heads, seq_length2 + 1, seq_length1)
+        padded_pos_score = padded_pos_score.view(
+            batch_size, num_heads, seq_length2 + 1, seq_length1
+        )
         pos_score = padded_pos_score[:, :, 1:].view_as(pos_score)
 
         return pos_score
@@ -333,7 +346,9 @@ class MultiHeadedSelfAttentionModule(nn.Module):
         - **outputs** (batch, time, dim): Tensor produces by relative multi headed self attention module.
     """
 
-    def __init__(self, d_model: int, num_heads: int, dropout_p: float = 0.1, is_casual=True):
+    def __init__(
+        self, d_model: int, num_heads: int, dropout_p: float = 0.1, is_casual=True
+    ):
         super(MultiHeadedSelfAttentionModule, self).__init__()
         self.positional_encoding = PositionalEncoding(d_model)
         self.layer_norm = nn.LayerNorm(d_model)
@@ -349,13 +364,17 @@ class MultiHeadedSelfAttentionModule(nn.Module):
         mask = None
         if self.is_casual:
             mask = torch.triu(
-                torch.ones((seq_length, seq_length), dtype=torch.uint8).to(inputs.device),
+                torch.ones((seq_length, seq_length), dtype=torch.uint8).to(
+                    inputs.device
+                ),
                 diagonal=1,
             )
             mask = mask.unsqueeze(0).expand(batch_size, -1, -1).bool()  # [B, L, L]
 
         inputs = self.layer_norm(inputs)
-        outputs = self.attention(inputs, inputs, inputs, pos_embedding=pos_embedding, mask=mask)
+        outputs = self.attention(
+            inputs, inputs, inputs, pos_embedding=pos_embedding, mask=mask
+        )
 
         return self.dropout(outputs)
 
@@ -366,7 +385,9 @@ class ResidualConnectionModule(nn.Module):
     outputs = (module(inputs) x module_factor + inputs x input_factor)
     """
 
-    def __init__(self, module: nn.Module, module_factor: float = 1.0, input_factor: float = 1.0):
+    def __init__(
+        self, module: nn.Module, module_factor: float = 1.0, input_factor: float = 1.0
+    ):
         super(ResidualConnectionModule, self).__init__()
         self.module = module
         self.module_factor = module_factor
@@ -404,7 +425,9 @@ class DepthwiseConv1d(nn.Module):
         is_casual: bool = True,
     ) -> None:
         super(DepthwiseConv1d, self).__init__()
-        assert out_channels % in_channels == 0, "out_channels should be constant multiple of in_channels"
+        assert (
+            out_channels % in_channels == 0
+        ), "out_channels should be constant multiple of in_channels"
         if is_casual:
             padding = kernel_size - 1
         else:
@@ -490,7 +513,9 @@ class ConformerConvModule(nn.Module):
         is_casual: bool = True,
     ) -> None:
         super(ConformerConvModule, self).__init__()
-        assert (kernel_size - 1) % 2 == 0, "kernel_size should be a odd number for 'SAME' padding"
+        assert (
+            kernel_size - 1
+        ) % 2 == 0, "kernel_size should be a odd number for 'SAME' padding"
         assert expansion_factor == 2, "Currently, Only Supports expansion_factor 2"
 
         self.sequential = nn.Sequential(
@@ -504,7 +529,9 @@ class ConformerConvModule(nn.Module):
                 bias=True,
             ),
             GLU(dim=1),
-            DepthwiseConv1d(in_channels, in_channels, kernel_size, stride=1, is_casual=is_casual),
+            DepthwiseConv1d(
+                in_channels, in_channels, kernel_size, stride=1, is_casual=is_casual
+            ),
             nn.BatchNorm1d(in_channels),
             Swish(),
             PointwiseConv1d(in_channels, in_channels, stride=1, padding=0, bias=True),
@@ -516,7 +543,9 @@ class ConformerConvModule(nn.Module):
 
 
 class TransformerLayer(nn.Module):
-    def __init__(self, in_chan=128, n_head=8, n_att=1, dropout=0.1, max_len=500, is_casual=True):
+    def __init__(
+        self, in_chan=128, n_head=8, n_att=1, dropout=0.1, max_len=500, is_casual=True
+    ):
         super(TransformerLayer, self).__init__()
         self.in_chan = in_chan
         self.n_head = n_head
@@ -529,8 +558,12 @@ class TransformerLayer(nn.Module):
                 FeedForwardModule(in_chan, expansion_factor=4, dropout_p=dropout),
                 module_factor=0.5,
             ),
-            ResidualConnectionModule(MultiHeadedSelfAttentionModule(in_chan, n_head, dropout, is_casual)),
-            ResidualConnectionModule(ConformerConvModule(in_chan, 31, 2, dropout, is_casual=is_casual)),
+            ResidualConnectionModule(
+                MultiHeadedSelfAttentionModule(in_chan, n_head, dropout, is_casual)
+            ),
+            ResidualConnectionModule(
+                ConformerConvModule(in_chan, 31, 2, dropout, is_casual=is_casual)
+            ),
             ResidualConnectionModule(
                 FeedForwardModule(in_chan, expansion_factor=4, dropout_p=dropout),
                 module_factor=0.5,
@@ -554,7 +587,9 @@ class TransformerBlockTF(nn.Module):
         is_casual=True,
     ):
         super(TransformerBlockTF, self).__init__()
-        self.transformer = TransformerLayer(in_chan, n_head, n_att, dropout, max_len, is_casual)
+        self.transformer = TransformerLayer(
+            in_chan, n_head, n_att, dropout, max_len, is_casual
+        )
         self.norm = normalizations.get(norm_type)(in_chan)
 
     def forward(self, x):
@@ -603,7 +638,7 @@ class DPRNNBlock(nn.Module):
         self.inter_norm = normalizations.get(norm_type)(in_chan)
 
     def forward(self, x):
-        """Input shape : [batch, feats, chunk_size, num_chunks]"""
+        """ Input shape : [batch, feats, chunk_size, num_chunks] """
         B, N, K, L = x.size()
         output = x  # for skip connection
         # Intra-chunk processing
@@ -714,7 +749,9 @@ class DPRNN(nn.Module):
         output = self.net(output)
         # Map to sources with kind of 2D masks
         output = self.first_out(output)
-        output = output.reshape(batch * self.n_src, self.bn_chan, self.chunk_size, n_chunks)
+        output = output.reshape(
+            batch * self.n_src, self.bn_chan, self.chunk_size, n_chunks
+        )
         # Overlap and add:
         # [batch, out_chan, chunk_size, n_chunks] -> [batch, out_chan, n_frames]
         to_unfold = self.bn_chan * self.chunk_size
@@ -847,7 +884,9 @@ class DPRNNLinear(nn.Module):
         output = self.net(output)
         # Map to sources with kind of 2D masks
         output = self.first_out(output)
-        output = output.reshape(batch * self.n_src, self.bn_chan, self.chunk_size, n_chunks)
+        output = output.reshape(
+            batch * self.n_src, self.bn_chan, self.chunk_size, n_chunks
+        )
         # Overlap and add:
         # [batch, out_chan, chunk_size, n_chunks] -> [batch, out_chan, n_frames]
         to_unfold = self.bn_chan * self.chunk_size
@@ -860,7 +899,9 @@ class DPRNNLinear(nn.Module):
         )
         # Apply gating
         output = output.reshape(batch * self.n_src, self.bn_chan, -1)
-        output = self.net_out(output.transpose(1, 1)).transpose(1, 2) * self.net_gate(output)
+        output = self.net_out(output.transpose(1, 1)).transpose(1, 2) * self.net_gate(
+            output
+        )
         # Compute mask
         score = self.mask_net(output)
         est_mask = self.output_act(score)

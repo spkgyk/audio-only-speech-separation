@@ -2,6 +2,7 @@
 # License: Apache 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 
 import math
+
 import numpy as np
 import torch as th
 import torch.nn as nn
@@ -91,7 +92,7 @@ def init_kernel(
         window = tf.pad(window, (lpad, fft_size - frame_len - lpad))
     if normalized:
         # make K^H * K = I
-        S = fft_size**0.5
+        S = fft_size ** 0.5
     else:
         S = 1
     # W x B x 2
@@ -160,7 +161,9 @@ def mel_filter(
     return th.tensor(mel, dtype=th.float32)
 
 
-def speed_perturb_filter(src_sr: int, dst_sr: int, cutoff_ratio: float = 0.95, num_zeros: int = 64) -> th.Tensor:
+def speed_perturb_filter(
+    src_sr: int, dst_sr: int, cutoff_ratio: float = 0.95, num_zeros: int = 64
+) -> th.Tensor:
     """
     Return speed perturb filters, reference:
         https://github.com/danpovey/filtering/blob/master/lilfilter/resampler.py
@@ -186,12 +189,16 @@ def speed_perturb_filter(src_sr: int, dst_sr: int, cutoff_ratio: float = 0.95, n
         - np.arange(2 * padding + 1)[None, None, :]
         + padding
     )
-    window = np.heaviside(1 - np.abs(times / padding), 0.0) * (0.5 + 0.5 * np.cos(times / padding * math.pi))
+    window = np.heaviside(1 - np.abs(times / padding), 0.0) * (
+        0.5 + 0.5 * np.cos(times / padding * math.pi)
+    )
     weight = np.sinc(times * zeros_per_block) * window * zeros_per_block / float(src_sr)
     return th.tensor(weight, dtype=th.float32)
 
 
-def splice_feature(feats: th.Tensor, lctx: int = 1, rctx: int = 1, op: str = "cat") -> th.Tensor:
+def splice_feature(
+    feats: th.Tensor, lctx: int = 1, rctx: int = 1, op: str = "cat"
+) -> th.Tensor:
     """
     Splice feature
     Args:
@@ -262,7 +269,9 @@ def _forward_stft(
     kernel = kernel * window
     if pre_emphasis > 0:
         # NC x W x T
-        frames = tf.unfold(wav[:, None], (1, kernel.shape[-1]), stride=frame_hop, padding=0)
+        frames = tf.unfold(
+            wav[:, None], (1, kernel.shape[-1]), stride=frame_hop, padding=0
+        )
         # follow Kaldi's Preemphasize
         frames[:, 1:] = frames[:, 1:] - pre_emphasis * frames[:, :-1]
         frames[:, 0] *= 1 - pre_emphasis
@@ -281,7 +290,7 @@ def _forward_stft(
         real = real[..., :num_bins, :]
         imag = imag[..., :num_bins, :]
     if return_polar:
-        mag = (real**2 + imag**2 + eps) ** 0.5
+        mag = (real ** 2 + imag ** 2 + eps) ** 0.5
         pha = th.atan2(imag, real)
         return th.stack([mag, pha], dim=-1)
     else:
@@ -411,7 +420,7 @@ def _pytorch_stft(
         return stft
     # N x (C) x F x T
     real, imag = stft[..., 0], stft[..., 1]
-    mag = (real**2 + imag**2 + eps) ** 0.5
+    mag = (real ** 2 + imag ** 2 + eps) ** 0.5
     pha = th.atan2(imag, real)
     return th.stack([mag, pha], dim=-1)
 
@@ -659,7 +668,9 @@ class STFTBase(nn.Module):
             self.K = None
             w = init_window(window, frame_len)
             self.w = nn.Parameter(w, requires_grad=False)
-            fft_size = 2 ** math.ceil(math.log2(frame_len)) if round_pow_of_two else frame_len
+            fft_size = (
+                2 ** math.ceil(math.log2(frame_len)) if round_pow_of_two else frame_len
+            )
             self.num_bins = fft_size // 2 + 1
             self.pre_emphasis = 0
             self.win_length = fft_size
@@ -678,7 +689,9 @@ class STFTBase(nn.Module):
         assert th.sum(wav_len <= self.win_length) == 0
         if self.center:
             wav_len += self.win_length
-        return th.div(wav_len - self.win_length, self.frame_hop, rounding_mode="trunc") + 1
+        return (
+            th.div(wav_len - self.win_length, self.frame_hop, rounding_mode="trunc") + 1
+        )
 
     def extra_repr(self) -> str:
         str_repr = (
@@ -703,7 +716,9 @@ class STFT(STFTBase):
     def __init__(self, *args, **kwargs):
         super(STFT, self).__init__(*args, inverse=False, **kwargs)
 
-    def forward(self, wav: th.Tensor, return_polar: bool = False, eps: float = EPSILON) -> th.Tensor:
+    def forward(
+        self, wav: th.Tensor, return_polar: bool = False, eps: float = EPSILON
+    ) -> th.Tensor:
         """
         Accept (single or multiple channel) raw waveform and output magnitude and phase
         Args
@@ -746,7 +761,9 @@ class iSTFT(STFTBase):
     def __init__(self, *args, **kwargs):
         super(iSTFT, self).__init__(*args, inverse=True, **kwargs)
 
-    def forward(self, transform: th.Tensor, return_polar: bool = False, eps: float = EPSILON) -> th.Tensor:
+    def forward(
+        self, transform: th.Tensor, return_polar: bool = False, eps: float = EPSILON
+    ) -> th.Tensor:
         """
         Accept phase & magnitude and output raw waveform
         Args

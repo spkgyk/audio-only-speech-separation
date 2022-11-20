@@ -1,15 +1,13 @@
-"""
+'''
 Author: Kai Li
 Date: 2020-08-09 17:32:53
 LastEditTime: 2021-05-21 22:54:23
-"""
-import math
+'''
 import torch
 import torch.nn as nn
+import math
 import torch.nn.functional as F
-
 from .base_model import BaseModel
-
 
 class _LayerNorm(nn.Module):
     """Layer Normalization base class."""
@@ -17,19 +15,22 @@ class _LayerNorm(nn.Module):
     def __init__(self, channel_size):
         super(_LayerNorm, self).__init__()
         self.channel_size = channel_size
-        self.gamma = nn.Parameter(torch.ones(channel_size), requires_grad=True)
-        self.beta = nn.Parameter(torch.zeros(channel_size), requires_grad=True)
+        self.gamma = nn.Parameter(torch.ones(channel_size),
+                                  requires_grad=True)
+        self.beta = nn.Parameter(torch.zeros(channel_size),
+                                 requires_grad=True)
 
     def apply_gain_and_bias(self, normed_x):
-        """Assumes input of size `[batch, chanel, *]`."""
-        return (self.gamma * normed_x.transpose(1, -1) + self.beta).transpose(1, -1)
+        """ Assumes input of size `[batch, chanel, *]`. """
+        return (self.gamma * normed_x.transpose(1, -1) +
+                self.beta).transpose(1, -1)
 
 
 class GlobLN(_LayerNorm):
     """Global Layer Normalization (globLN)."""
 
     def forward(self, x):
-        """Applies forward pass.
+        """ Applies forward pass.
         Works for any input size > 2D.
         Args:
             x (:class:`torch.Tensor`): Shape `[batch, chan, *]`
@@ -43,21 +44,22 @@ class GlobLN(_LayerNorm):
 
 
 class ConvNormAct(nn.Module):
-    """
+    '''
     This class defines the convolution layer with normalization and a PReLU
     activation
-    """
+    '''
 
     def __init__(self, nIn, nOut, kSize, stride=1, groups=1):
-        """
+        '''
         :param nIn: number of input channels
         :param nOut: number of output channels
         :param kSize: kernel size
         :param stride: stride rate for down-sampling. Default is 1
-        """
+        '''
         super().__init__()
         padding = int((kSize - 1) / 2)
-        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, padding=padding, bias=True, groups=groups)
+        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, padding=padding,
+                              bias=True, groups=groups)
         self.norm = GlobLN(nOut)
         self.act = nn.PReLU()
 
@@ -68,20 +70,21 @@ class ConvNormAct(nn.Module):
 
 
 class ConvNorm(nn.Module):
-    """
+    '''
     This class defines the convolution layer with normalization and PReLU activation
-    """
+    '''
 
     def __init__(self, nIn, nOut, kSize, stride=1, groups=1):
-        """
+        '''
         :param nIn: number of input channels
         :param nOut: number of output channels
         :param kSize: kernel size
         :param stride: stride rate for down-sampling. Default is 1
-        """
+        '''
         super().__init__()
         padding = int((kSize - 1) / 2)
-        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, padding=padding, bias=True, groups=groups)
+        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, padding=padding,
+                              bias=True, groups=groups)
         self.norm = GlobLN(nOut)
 
     def forward(self, input):
@@ -90,14 +93,14 @@ class ConvNorm(nn.Module):
 
 
 class NormAct(nn.Module):
-    """
+    '''
     This class defines a normalization and PReLU activation
-    """
+    '''
 
     def __init__(self, nOut):
-        """
+        '''
         :param nOut: number of output channels
-        """
+        '''
         super().__init__()
         # self.norm = nn.GroupNorm(1, nOut, eps=1e-08)
         self.norm = GlobLN(nOut)
@@ -109,40 +112,42 @@ class NormAct(nn.Module):
 
 
 class DilatedConv(nn.Module):
-    """
+    '''
     This class defines the dilated convolution.
-    """
+    '''
 
     def __init__(self, nIn, nOut, kSize, stride=1, d=1, groups=1):
-        """
+        '''
         :param nIn: number of input channels
         :param nOut: number of output channels
         :param kSize: kernel size
         :param stride: optional stride rate for down-sampling
         :param d: optional dilation rate
-        """
+        '''
         super().__init__()
-        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, dilation=d, padding=((kSize - 1) // 2) * d, groups=groups)
+        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, dilation=d,
+                              padding=((kSize - 1) // 2) * d, groups=groups)
 
     def forward(self, input):
         return self.conv(input)
 
 
 class DilatedConvNorm(nn.Module):
-    """
+    '''
     This class defines the dilated convolution with normalized output.
-    """
+    '''
 
     def __init__(self, nIn, nOut, kSize, stride=1, d=1, groups=1):
-        """
+        '''
         :param nIn: number of input channels
         :param nOut: number of output channels
         :param kSize: kernel size
         :param stride: optional stride rate for down-sampling
         :param d: optional dilation rate
-        """
+        '''
         super().__init__()
-        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, dilation=d, padding=((kSize - 1) // 2) * d, groups=groups)
+        self.conv = nn.Conv1d(nIn, nOut, kSize, stride=stride, dilation=d,
+                              padding=((kSize - 1) // 2) * d, groups=groups)
         # self.norm = nn.GroupNorm(1, nOut, eps=1e-08)
         self.norm = GlobLN(nOut)
 
@@ -152,15 +157,23 @@ class DilatedConvNorm(nn.Module):
 
 
 class Blocks(nn.Module):
-    def __init__(self, out_channels=128, in_channels=512, upsampling_depth=4):
+    def __init__(self,
+                 out_channels=128,
+                 in_channels=512,
+                 upsampling_depth=4):
         super().__init__()
-        self.proj_1x1 = ConvNormAct(out_channels, in_channels, 1, stride=1, groups=1)
+        self.proj_1x1 = ConvNormAct(out_channels, in_channels, 1,
+                                    stride=1, groups=1)
         self.depth = upsampling_depth
         self.spp_dw = nn.ModuleList([])
-        self.spp_dw.append(DilatedConvNorm(in_channels, in_channels, kSize=5, stride=1, groups=in_channels, d=1))
+        self.spp_dw.append(DilatedConvNorm(in_channels, in_channels, kSize=5,
+                                           stride=1, groups=in_channels, d=1))
         # ----------Down Sample Layer----------
         for i in range(1, upsampling_depth):
-            self.spp_dw.append(DilatedConvNorm(in_channels, in_channels, kSize=5, stride=2, groups=in_channels, d=1))
+            self.spp_dw.append(DilatedConvNorm(in_channels, in_channels,
+                                               kSize=5,
+                                               stride=2,
+                                               groups=in_channels, d=1))
         # ----------Fusion Layer----------
         self.fuse_layers = nn.ModuleList([])
         for i in range(upsampling_depth):
@@ -168,29 +181,36 @@ class Blocks(nn.Module):
             for j in range(upsampling_depth):
                 if i == j:
                     fuse_layer.append(None)
-                elif j - i == 1:
+                elif j-i == 1:
                     fuse_layer.append(None)
-                elif i - j == 1:
-                    fuse_layer.append(DilatedConvNorm(in_channels, in_channels, kSize=5, stride=2, groups=in_channels, d=1))
+                elif i-j == 1:
+                    fuse_layer.append(DilatedConvNorm(in_channels, in_channels,
+                                                      kSize=5,
+                                                      stride=2,
+                                                      groups=in_channels, d=1))
             self.fuse_layers.append(fuse_layer)
         self.concat_layer = nn.ModuleList([])
         # ----------Concat Layer----------
         for i in range(upsampling_depth):
-            if i == 0 or i == upsampling_depth - 1:
-                self.concat_layer.append(ConvNormAct(in_channels * 2, in_channels, 1, 1))
+            if i == 0 or i == upsampling_depth-1:
+                self.concat_layer.append(ConvNormAct(
+                    in_channels*2, in_channels, 1, 1))
             else:
-                self.concat_layer.append(ConvNormAct(in_channels * 3, in_channels, 1, 1))
+                self.concat_layer.append(ConvNormAct(
+                    in_channels*3, in_channels, 1, 1))
 
-        self.last_layer = nn.Sequential(ConvNormAct(in_channels * upsampling_depth, in_channels, 1, 1))
+        self.last_layer = nn.Sequential(
+            ConvNormAct(in_channels*upsampling_depth, in_channels, 1, 1)
+        )
         self.res_conv = nn.Conv1d(in_channels, out_channels, 1)
         # ----------parameters-------------
         self.depth = upsampling_depth
 
     def forward(self, x):
-        """
+        '''
         :param x: input feature map
         :return: transformed feature map
-        """
+        '''
         residual = x.clone()
         # Reduce --> project high-dimensional feature maps to low-dimensional space
         output1 = self.proj_1x1(x)
@@ -202,35 +222,35 @@ class Blocks(nn.Module):
         x_fuse = []
         for i in range(len(self.fuse_layers)):
             wav_length = output[i].shape[-1]
-            y = torch.cat(
-                (
-                    self.fuse_layers[i][0](output[i - 1]) if i - 1 >= 0 else torch.Tensor().to(output1.device),
-                    output[i],
-                    F.interpolate(output[i + 1], size=wav_length, mode="nearest")
-                    if i + 1 < self.depth
-                    else torch.Tensor().to(output1.device),
-                ),
-                dim=1,
-            )
+            y = torch.cat((self.fuse_layers[i][0](output[i-1]) if i-1 >= 0 else torch.Tensor().to(output1.device),
+                           output[i],
+                           F.interpolate(output[i+1], size=wav_length, mode='nearest') if i+1 < self.depth else torch.Tensor().to(output1.device)), dim=1)
             x_fuse.append(self.concat_layer[i](y))
 
         wav_length = output[0].shape[-1]
         for i in range(1, len(x_fuse)):
-            x_fuse[i] = F.interpolate(x_fuse[i], size=wav_length, mode="nearest")
+            x_fuse[i] = F.interpolate(
+                x_fuse[i], size=wav_length, mode='nearest')
 
         concat = self.last_layer(torch.cat(x_fuse, dim=1))
         expanded = self.res_conv(concat)
         return expanded + residual
-        # return expanded
-
+        #return expanded
 
 class Recurrent(nn.Module):
-    def __init__(self, out_channels=128, in_channels=512, upsampling_depth=4, _iter=4):
+    def __init__(self,
+                 out_channels=128,
+                 in_channels=512,
+                 upsampling_depth=4,
+                 _iter=4):
         super().__init__()
         self.blocks = Blocks(out_channels, in_channels, upsampling_depth)
         self.iter = _iter
-        # self.attention = Attention_block(out_channels)
-        self.concat_block = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1, 1, groups=out_channels), nn.PReLU())
+        #self.attention = Attention_block(out_channels)
+        self.concat_block = nn.Sequential(
+            nn.Conv1d(out_channels, out_channels, 1, 1, groups=out_channels),
+            nn.PReLU()
+        )
 
     def forward(self, x):
         mixture = x.clone()
@@ -238,8 +258,8 @@ class Recurrent(nn.Module):
             if i == 0:
                 x = self.blocks(x)
             else:
-                # m = self.attention(mixture, x)
-                x = self.blocks(self.concat_block(mixture + x))
+                #m = self.attention(mixture, x)
+                x = self.blocks(self.concat_block(mixture+x))
         return x
 
 
@@ -265,9 +285,9 @@ class AFRCNN(BaseModel):
         self.num_sources = num_sources
 
         # Appropriate padding is needed for arbitrary lengths
-        self.lcm = abs(self.enc_kernel_size // 4 * 4**self.upsampling_depth) // math.gcd(
-            self.enc_kernel_size // 4, 4**self.upsampling_depth
-        )
+        self.lcm = abs(
+            self.enc_kernel_size // 4 * 4 ** self.upsampling_depth
+        ) // math.gcd(self.enc_kernel_size // 4, 4 ** self.upsampling_depth)
 
         # Front end
         self.encoder = nn.Conv1d(
@@ -282,7 +302,9 @@ class AFRCNN(BaseModel):
 
         # Norm before the rest, and apply one more dense layer
         self.ln = GlobLN(self.enc_num_basis)
-        self.bottleneck = nn.Conv1d(in_channels=self.enc_num_basis, out_channels=out_channels, kernel_size=1)
+        self.bottleneck = nn.Conv1d(
+            in_channels=self.enc_num_basis, out_channels=out_channels, kernel_size=1
+        )
 
         # Separation module
         self.sm = Recurrent(out_channels, in_channels, upsampling_depth, num_blocks)
@@ -331,7 +353,9 @@ class AFRCNN(BaseModel):
         if input_wav.ndim == 3:
             input_wav = input_wav.squeeze(1)
 
-        x, rest = self.pad_input(input_wav, self.enc_kernel_size, self.enc_kernel_size // 4)
+        x, rest = self.pad_input(
+            input_wav, self.enc_kernel_size, self.enc_kernel_size // 4
+        )
         # Front end
         x = self.encoder(x.unsqueeze(1))
 
@@ -351,7 +375,9 @@ class AFRCNN(BaseModel):
         estimated_waveforms = estimated_waveforms[
             :,
             :,
-            self.enc_kernel_size - self.enc_kernel_size // 4 : -(rest + self.enc_kernel_size - self.enc_kernel_size // 4),
+            self.enc_kernel_size
+            - self.enc_kernel_size
+            // 4 : -(rest + self.enc_kernel_size - self.enc_kernel_size // 4),
         ].contiguous()
         if was_one_d:
             return estimated_waveforms.squeeze(0)

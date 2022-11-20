@@ -129,6 +129,15 @@ dmypy.json
 .pyre/
 
 # Other
+
+DataPreProcess/**/LRS2Audio
 DataPreProcess/**/Libri2Mix
 DataPreProcess/**/Wham
 DataPreProcess/**/LRS33SPK
+clear.py
+Experiments/**/
+*.pyc
+*.sh
+*.DS_Store
+*.out
+*.json

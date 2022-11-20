@@ -5,11 +5,10 @@
 # LastEditTime: 2021-07-13 15:44:05
 ###
 
-import torch
 import warnings
-
-from torch import nn
 from typing import Optional
+import torch
+from torch import nn
 from torch.nn import functional as F
 
 
@@ -53,20 +52,28 @@ def make_enc_dec(
     fb_class = get(fb_name)
 
     if who_is_pinv in ["dec", "decoder"]:
-        fb = fb_class(n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs)
+        fb = fb_class(
+            n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs
+        )
         enc = Encoder(fb, padding=padding)
         # Decoder filterbank is pseudo inverse of encoder filterbank.
         dec = Decoder.pinv_of(fb)
     elif who_is_pinv in ["enc", "encoder"]:
-        fb = fb_class(n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs)
+        fb = fb_class(
+            n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs
+        )
         dec = Decoder(fb, padding=padding, output_padding=output_padding)
         # Encoder filterbank is pseudo inverse of decoder filterbank.
         enc = Encoder.pinv_of(fb)
     else:
-        fb = fb_class(n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs)
+        fb = fb_class(
+            n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs
+        )
         enc = Encoder(fb, padding=padding)
         # Filters between encoder and decoder should not be shared.
-        fb = fb_class(n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs)
+        fb = fb_class(
+            n_filters, kernel_size, stride=stride, sample_rate=sample_rate, **kwargs
+        )
         dec = Decoder(fb, padding=padding, output_padding=output_padding)
     return enc, dec
 
@@ -76,8 +83,13 @@ def register_filterbank(custom_fb):
     Args:
         custom_fb: Custom filterbank to register.
     """
-    if custom_fb.__name__ in globals().keys() or custom_fb.__name__.lower() in globals().keys():
-        raise ValueError(f"Filterbank {custom_fb.__name__} already exists. Choose another name.")
+    if (
+        custom_fb.__name__ in globals().keys()
+        or custom_fb.__name__.lower() in globals().keys()
+    ):
+        raise ValueError(
+            f"Filterbank {custom_fb.__name__} already exists. Choose another name."
+        )
     globals().update({custom_fb.__name__: custom_fb})
 
 
@@ -96,10 +108,14 @@ def get(identifier):
     elif isinstance(identifier, str):
         cls = globals().get(identifier)
         if cls is None:
-            raise ValueError("Could not interpret filterbank identifier: " + str(identifier))
+            raise ValueError(
+                "Could not interpret filterbank identifier: " + str(identifier)
+            )
         return cls
     else:
-        raise ValueError("Could not interpret filterbank identifier: " + str(identifier))
+        raise ValueError(
+            "Could not interpret filterbank identifier: " + str(identifier)
+        )
 
 
 class Filterbank(nn.Module):
@@ -161,7 +177,9 @@ class Filterbank(nn.Module):
         return config
 
     def forward(self, waveform):
-        raise NotImplementedError("Filterbanks must be wrapped with an Encoder or a Decoder.")
+        raise NotImplementedError(
+            "Filterbanks must be wrapped with an Encoder or a Decoder."
+        )
 
 
 class _EncDec(nn.Module):
@@ -280,7 +298,9 @@ def multishape_conv1d(
     if waveform.ndim == 1:
         # Assumes 1D input with shape (time,)
         # Output will be (freq, conv_time)
-        return F.conv1d(waveform[None, None], filters, stride=stride, padding=padding).squeeze()
+        return F.conv1d(
+            waveform[None, None], filters, stride=stride, padding=padding
+        ).squeeze()
     elif waveform.ndim == 2:
         # Assume 2D input with shape (batch or channels, time)
         # Output will be (batch or channels, freq, conv_time)
@@ -304,17 +324,23 @@ def multishape_conv1d(
             # (b, 3, f, conv_t). Useful for multichannel transforms. If as_conv1d is
             # false, (batch, 1, time) will output (batch, 1, freq, conv_time), useful for
             # consistency.
-            return batch_packed_1d_conv(waveform, filters, stride=stride, padding=padding)
+            return batch_packed_1d_conv(
+                waveform, filters, stride=stride, padding=padding
+            )
     else:  # waveform.ndim > 3
         # This is to compute "multi"multichannel convolution.
         # Input can be (*, time), output will be (*, freq, conv_time)
         return batch_packed_1d_conv(waveform, filters, stride=stride, padding=padding)
 
 
-def batch_packed_1d_conv(inp: torch.Tensor, filters: torch.Tensor, stride: int = 1, padding: int = 0):
+def batch_packed_1d_conv(
+    inp: torch.Tensor, filters: torch.Tensor, stride: int = 1, padding: int = 0
+):
     # Here we perform multichannel / multi-source convolution.
     # Output should be (batch, channels, freq, conv_time)
-    batched_conv = F.conv1d(inp.view(-1, 1, inp.shape[-1]), filters, stride=stride, padding=padding)
+    batched_conv = F.conv1d(
+        inp.view(-1, 1, inp.shape[-1]), filters, stride=stride, padding=padding
+    )
     output_shape = inp.shape[:-1] + batched_conv.shape[-2:]
     return batched_conv.view(output_shape)
 
@@ -429,7 +455,9 @@ class FreeFB(Filterbank):
         Manuel Pariente, Samuele Cornell, Antoine Deleforge, Emmanuel Vincent.
     """
 
-    def __init__(self, n_filters, kernel_size, stride=None, sample_rate=8000.0, **kwargs):
+    def __init__(
+        self, n_filters, kernel_size, stride=None, sample_rate=8000.0, **kwargs
+    ):
         super().__init__(n_filters, kernel_size, stride=stride, sample_rate=sample_rate)
         self._filters = nn.Parameter(torch.ones(n_filters, 1, kernel_size))
         for p in self.parameters():
