@@ -131,6 +131,7 @@ dmypy.json
 # Other
 
 DataPreProcess/**/LRS2Audio
+DataPreProcess/**/LRS2Audio_old
 DataPreProcess/**/Libri2Mix
 DataPreProcess/**/Wham
 DataPreProcess/**/LRS33SPK

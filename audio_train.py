@@ -40,20 +40,15 @@ parser.add_argument(
     help="Full path to save best validation model",
 )
 
+
 def main(config):
-    print_only(
-        "Instantiating datamodule <{}>".format(config["datamodule"]["data_name"])
-    )
-    datamodule: object = getattr(look2hear.datas, config["datamodule"]["data_name"])(
-        **config["datamodule"]["data_config"]
-    )
+    print_only("Instantiating datamodule <{}>".format(config["datamodule"]["data_name"]))
+    datamodule: object = getattr(look2hear.datas, config["datamodule"]["data_name"])(**config["datamodule"]["data_config"])
     datamodule.setup()
 
     train_loader, val_loader, test_loader = datamodule.make_loader
     # Define model and optimizer
-    print_only(
-        "Instantiating AudioNet <{}>".format(config["audionet"]["audionet_name"])
-    )
+    print_only("Instantiating AudioNet <{}>".format(config["audionet"]["audionet_name"]))
     model = getattr(look2hear.models, config["audionet"]["audionet_name"])(
         sample_rate=config["datamodule"]["data_config"]["sample_rate"],
         **config["audionet"]["audionet_config"],
@@ -65,17 +60,13 @@ def main(config):
     # Define scheduler
     scheduler = None
     if config["scheduler"]["sche_name"]:
-        print_only(
-            "Instantiating Scheduler <{}>".format(config["scheduler"]["sche_name"])
-        )
+        print_only("Instantiating Scheduler <{}>".format(config["scheduler"]["sche_name"]))
         scheduler = getattr(torch.optim.lr_scheduler, config["scheduler"]["sche_name"])(
             optimizer=optimizer, **config["scheduler"]["sche_config"]
         )
 
     # Just after instantiating, save the args. Easy loading in the future.
-    config["main_args"]["exp_dir"] = os.path.join(
-        os.getcwd(), "Experiments", "checkpoint", config["exp"]["exp_name"]
-    )
+    config["main_args"]["exp_dir"] = os.path.join(os.getcwd(), "Experiments", "checkpoint", config["exp"]["exp_name"])
     exp_dir = config["main_args"]["exp_dir"]
     os.makedirs(exp_dir, exist_ok=True)
     conf_path = os.path.join(exp_dir, "conf.yml")
@@ -83,11 +74,7 @@ def main(config):
         yaml.safe_dump(config, outfile)
 
     # Define Loss function.
-    print_only(
-        "Instantiating Loss, Train <{}>, Val <{}>".format(
-            config["loss"]["train"]["sdr_type"], config["loss"]["val"]["sdr_type"]
-        )
-    )
+    print_only("Instantiating Loss, Train <{}>, Val <{}>".format(config["loss"]["train"]["sdr_type"], config["loss"]["val"]["sdr_type"]))
     loss_func = {
         "train": getattr(look2hear.losses, config["loss"]["train"]["loss_func"])(
             getattr(look2hear.losses, config["loss"]["train"]["sdr_type"]),
@@ -133,7 +120,8 @@ def main(config):
 
     # Don't ask GPU if they are not available.
     gpus = config["training"]["gpus"] if torch.cuda.is_available() else None
-    distributed_backend = "ddp" if torch.cuda.is_available() else None
+    # distributed_backend = "ddp" if torch.cuda.is_available() else None
+    distributed_backend = config["training"]["parallel"] if torch.cuda.is_available() else None
 
     # default logger used by trainer
     logger_dir = os.path.join(os.getcwd(), "Experiments", "tensorboard_logs")

@@ -1,12 +1,12 @@
 # Network config
 audionet:
-  audionet_name: SuDORMRFLTF
+  audionet_name: TDANet
   audionet_config:
     out_channels: 128
     in_channels: 512
     num_blocks: 16
     upsampling_depth: 5
-    enc_kernel_size: 21 # ms
+    enc_kernel_size: 4 # ms
     num_sources: 2
 
 # Loss config
@@ -27,8 +27,8 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1,2]
-  parallel: ddp
+  gpus: [4,5,6,7,8,9]
+  parallel: cuda
   epochs: 500
   early_stop:
     monitor: val_loss/dataloader_idx_0
@@ -68,4 +68,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: TDANetCausal-in_channels=512-LRS2-win=4ms-batch=1-gpus=3
+  exp_name: TDANet-in_channels=512-LRS2-win=4ms-batch=2-gpus=6
