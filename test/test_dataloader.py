@@ -4,19 +4,17 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-07-29 06:22:11
 ###
-import look2hear.datas
-from look2hear.utils.parser_utils import prepare_parser_from_dict, parse_args_as_dict
-import look2hear.models
 import yaml
-from ptflops import get_model_complexity_info
+import look2hear.datas
+import look2hear.models
+
 from rich import print
 from rich.progress import track
+from look2hear.utils.parser_utils import prepare_parser_from_dict, parse_args_as_dict
 
 
 def test_LRS2Audio(config):
-    datamodule: object = getattr(look2hear.datas, config["datamodule"]["data_name"])(
-        **config["datamodule"]["data_config"]
-    )
+    datamodule: object = getattr(look2hear.datas, config["datamodule"]["data_name"])(**config["datamodule"]["data_config"])
     datamodule.setup()
     train_loader, val_loader, test_loader = datamodule.make_loader
     for batch in track(train_loader):

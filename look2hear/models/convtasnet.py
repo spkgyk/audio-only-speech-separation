@@ -6,8 +6,8 @@
 ###
 import torch
 import torch.nn as nn
-import math
 import torch.nn.functional as F
+
 from . import normalizations
 from .base_model import BaseModel
 

@@ -5,13 +5,13 @@
 # LastEditTime: 2021-11-16 17:58:58
 ###
 
-import torch
-from torch.utils import data
-import json
 import os
+import json
+import torch
 import numpy as np
 import soundfile as sf
 
+from torch.utils import data
 
 def normalize_tensor_wav(wav_tensor, eps=1e-8, std=None):
     mean = wav_tensor.mean(-1, keepdim=True)

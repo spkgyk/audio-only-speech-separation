@@ -4,11 +4,8 @@
 # LastEditors: Kai Li
 # LastEditTime: 2021-06-19 01:02:04
 ###
-import os
-import warnings
 import torch
 import numpy as np
-import soundfile as sf
 
 
 def get_device(tensor_or_module, default=None):

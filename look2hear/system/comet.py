@@ -22,14 +22,13 @@ Comet Logger
 ------------
 """
 
-import logging
 import os
+import torch
+import logging
+
+from torch import is_tensor
 from argparse import Namespace
 from typing import Any, Dict, Optional, Union
-
-import torch
-from torch import is_tensor
-
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
 from pytorch_lightning.utilities import _module_available, rank_zero_only
@@ -145,17 +144,12 @@ class CometLogger(LightningLoggerBase):
         **kwargs,
     ):
         if comet_ml is None:
-            raise ImportError(
-                "You want to use `comet_ml` logger which is not installed yet,"
-                " install it with `pip install comet-ml`."
-            )
+            raise ImportError("You want to use `comet_ml` logger which is not installed yet," " install it with `pip install comet-ml`.")
         super().__init__()
         self._experiment = None
 
         # Determine online or offline mode based on which arguments were passed to CometLogger
-        api_key = api_key or comet_ml.config.get_api_key(
-            None, comet_ml.config.get_config()
-        )
+        api_key = api_key or comet_ml.config.get_api_key(None, comet_ml.config.get_config())
 
         if api_key is not None and save_dir is not None:
             self.mode = "offline" if offline else "online"
@@ -170,9 +164,7 @@ class CometLogger(LightningLoggerBase):
             self._save_dir = save_dir
         else:
             # If neither api_key nor save_dir are passed as arguments, raise an exception
-            raise MisconfigurationException(
-                "CometLogger requires either api_key or save_dir during initialization."
-            )
+            raise MisconfigurationException("CometLogger requires either api_key or save_dir during initialization.")
 
         log.info(f"CometLogger will be initialized in {self.mode} mode")
 
@@ -262,9 +254,7 @@ class CometLogger(LightningLoggerBase):
         self.experiment.log_embedding(vectors=perm, labels=label)
 
     @rank_zero_only
-    def log_metrics(
-        self, metrics: Dict[str, Union[torch.Tensor, float]], step: Optional[int] = None
-    ) -> None:
+    def log_metrics(self, metrics: Dict[str, Union[torch.Tensor, float]], step: Optional[int] = None) -> None:
         assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"
         # Comet.ml expects metrics to be a dictionary of detached tensors on CPU
         for key, val in metrics.items():
@@ -334,9 +324,7 @@ class CometLogger(LightningLoggerBase):
         # Save the experiment id in case an experiment object already exists,
         # this way we could create an ExistingExperiment pointing to the same
         # experiment
-        state["_experiment_key"] = (
-            self._experiment.id if self._experiment is not None else None
-        )
+        state["_experiment_key"] = self._experiment.id if self._experiment is not None else None
 
         # Remove the experiment object as it contains hard to pickle objects
         # (like network connections), the experiment object will be recreated if

@@ -5,25 +5,16 @@
 # LastEditTime: 2022-06-13 12:11:15
 ###
 from rich import print
-from dataclasses import dataclass
-from pytorch_lightning.utilities import rank_zero_only
 from typing import Union
-from pytorch_lightning.callbacks.progress.rich_progress import *
-from rich.console import Console, RenderableType
-from rich.progress_bar import ProgressBar
-from rich.style import Style
 from rich.text import Text
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    TaskID,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-    ProgressColumn
-)
+from rich.style import Style
+from dataclasses import dataclass
 from rich import print, reconfigure
+from rich.progress import ProgressColumn
+from rich.console import Console, RenderableType
+from pytorch_lightning.utilities import rank_zero_only
+from pytorch_lightning.callbacks.progress.rich_progress import *
+
 
 @rank_zero_only
 def print_only(message: str):

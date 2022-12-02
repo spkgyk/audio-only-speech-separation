@@ -4,18 +4,17 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-05-26 18:07:04
 ###
+import sys
 import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import copy
+
 from typing import Optional
 from .base_model import BaseModel
-from . import normalizations
-from torch.autograd import Variable
 from .base_model import BaseModel
+from torch.autograd import Variable
 
-import sys
 
 
 class PositionalEncoding(nn.Module):

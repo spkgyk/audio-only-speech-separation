@@ -6,10 +6,11 @@
 ###
 
 import torch
-from torch.autograd import Variable
-import torch.nn as nn
 import numpy as np
+import torch.nn as nn
+
 from typing import List
+from torch.autograd import Variable
 from torch.nn.modules.batchnorm import _BatchNorm
 
 

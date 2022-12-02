@@ -3,10 +3,11 @@ Author: Kai Li
 Date: 2020-08-09 17:32:53
 LastEditTime: 2021-05-21 22:54:23
 '''
+import math
 import torch
 import torch.nn as nn
-import math
 import torch.nn.functional as F
+
 from .base_model import BaseModel
 
 class _LayerNorm(nn.Module):

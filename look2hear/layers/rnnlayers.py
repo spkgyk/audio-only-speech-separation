@@ -5,18 +5,17 @@
 # LastEditTime: 2021-09-17 09:26:46
 ###
 
-import torch
 import math
+import torch
 import inspect
+
 from torch import nn
 from torch import Tensor
-from typing import Tuple
 from typing import Optional
 from torch.nn.functional import fold, unfold
-import numpy as np
 
-from . import activations, normalizations
 from .normalizations import gLN
+from . import activations, normalizations
 
 
 def has_arg(fn, name):

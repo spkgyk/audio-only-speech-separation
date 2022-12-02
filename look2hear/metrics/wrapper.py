@@ -6,18 +6,11 @@
 ###
 import csv
 import torch
-import numpy as np
 import logging
-
-from torch_mir_eval.separation import bss_eval_sources
+import numpy as np
 import fast_bss_eval
-from ..losses import (
-    PITLossWrapper,
-    pairwise_neg_sisdr,
-    pairwise_neg_snr,
-    singlesrc_neg_sisdr,
-    PairwiseNegSDR,
-)
+
+from ..losses import PITLossWrapper, PairwiseNegSDR
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +25,8 @@ class MetricsTracker:
         self.results_csv = open(save_file, "w")
         self.writer = csv.DictWriter(self.results_csv, fieldnames=csv_columns)
         self.writer.writeheader()
-        self.pit_sisnr = PITLossWrapper(
-            PairwiseNegSDR("sisdr", zero_mean=True), pit_from="pw_mtx"
-        )
-        self.pit_snr = PITLossWrapper(
-            PairwiseNegSDR("snr", zero_mean=True), pit_from="pw_mtx"
-        )
+        self.pit_sisnr = PITLossWrapper(PairwiseNegSDR("sisdr", zero_mean=True), pit_from="pw_mtx")
+        self.pit_snr = PITLossWrapper(PairwiseNegSDR("snr", zero_mean=True), pit_from="pw_mtx")
 
     def __call__(self, mix, clean, estimate, key):
         # sisnr
@@ -64,13 +53,15 @@ class MetricsTracker:
         self.all_sdrs_i.append(sdr_i.item())
         self.all_sisnrs.append(-sisnr.item())
         self.all_sisnrs_i.append(-sisnr_i.item())
-    
-    def update(self, ):
-        return {"sdr_i": np.array(self.all_sdrs_i).mean(),
-                "si-snr_i": np.array(self.all_sisnrs_i).mean()
-                }
 
-    def final(self,):
+    def update(
+        self,
+    ):
+        return {"sdr_i": np.array(self.all_sdrs_i).mean(), "si-snr_i": np.array(self.all_sisnrs_i).mean()}
+
+    def final(
+        self,
+    ):
         row = {
             "snt_id": "avg",
             "sdr": np.array(self.all_sdrs).mean(),

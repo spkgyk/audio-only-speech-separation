@@ -100,10 +100,10 @@
 #     print(parts_mixgen(range(4)))
 #     print([item for item in parts_mixgen_bisection(range(4), 2, 2)])
 
-import warnings
-from itertools import combinations
 import torch
+
 from torch import nn
+from itertools import combinations
 
 
 class MixITLossWrapper(nn.Module):

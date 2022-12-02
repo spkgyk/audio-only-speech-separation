@@ -4,17 +4,14 @@
 # LastEditors: Please set LastEditors
 # LastEditTime: 2021-12-13 19:31:51
 ###
+import math
 import torch
 import inspect
 import torch.nn as nn
-from torch import Tensor
-from typing import Tuple
-from typing import Optional
-import math
 import torch.nn.functional as F
-from torch.nn.functional import unfold, fold
-from ..layers import normalizations, activations
+
 from .base_model import BaseModel
+
 
 def has_arg(fn, name):
     """Checks if a callable accepts a given keyword argument.
@@ -38,21 +35,20 @@ def has_arg(fn, name):
 
 
 class PositionalEncoding(nn.Module):
-
     def __init__(self, in_channels, max_length):
         super().__init__()
         pe = torch.zeros(max_length, in_channels)
         position = torch.arange(0, max_length, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, in_channels, 2).float()
-                             * (-math.log(10000.0)/in_channels))
+        div_term = torch.exp(torch.arange(0, in_channels, 2).float() * (-math.log(10000.0) / in_channels))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0).transpose(0, 1)
-        self.register_buffer('pe', pe)
+        self.register_buffer("pe", pe)
 
     def forward(self, x):
-        x = x + self.pe[:x.size(0), :]
+        x = x + self.pe[: x.size(0), :]
         return x
+
 
 class GlobalAttnLayer(nn.Module):
     def __init__(self, in_channels, n_head, dropout, is_casual):
@@ -66,28 +62,28 @@ class GlobalAttnLayer(nn.Module):
         attns = None
         if spk_inp is not None:
             output, _ = self.attn(x, spk_inp, spk_inp)
-        else: 
+        else:
             mask = nn.Transformer.generate_square_subsequent_mask(x.size(0)).to(x.device)
-            if mask[mask.size(0)-1, 0] != 0:
+            if mask[mask.size(0) - 1, 0] != 0:
                 mask = mask.t()
-            output, _ = self.attn(x, x, x,
-                attn_mask=mask if self.is_casual else None)
+            output, _ = self.attn(x, x, x, attn_mask=mask if self.is_casual else None)
         output = self.norm(output + self.dropout(output))
         return output, attns
+
 
 class DeepGlobalAttnLayer(nn.Module):
     def __init__(self, in_channels, n_head, dropout, is_casual):
         super().__init__()
         self.pos_enc = PositionalEncoding(in_channels, 500)
         self.attn_in_norm = nn.LayerNorm(in_channels)
-        self.attn_layer = nn.ModuleList([GlobalAttnLayer(in_channels, n_head, dropout, is_casual)
-            for _ in range(1)])
-        
+        self.attn_layer = nn.ModuleList([GlobalAttnLayer(in_channels, n_head, dropout, is_casual) for _ in range(1)])
+
     def forward(self, x, spk_inp=None):
         output = self.pos_enc(self.attn_in_norm(x))
         for block in self.attn_layer:
             output, attns = block(output, spk_inp=spk_inp)
         return output, attns
+
 
 class SingleRNN(nn.Module):
     """Module for a RNN block.
@@ -104,13 +100,8 @@ class SingleRNN(nn.Module):
         bidirectional (bool, optional): Whether the RNN layers are
             bidirectional. Default is ``False``.
     """
-    def __init__(self,
-                 rnn_type,
-                 input_size,
-                 hidden_size,
-                 n_layers=1,
-                 dropout=0,
-                 bidirectional=False):
+
+    def __init__(self, rnn_type, input_size, hidden_size, n_layers=1, dropout=0, bidirectional=False):
         super(SingleRNN, self).__init__()
         assert rnn_type.upper() in ["RNN", "LSTM", "GRU"]
         rnn_type = rnn_type.upper()
@@ -134,11 +125,12 @@ class SingleRNN(nn.Module):
         return self.hidden_size * (2 if self.bidirectional else 1)
 
     def forward(self, inp):
-        """ Input shape [batch, seq, feats] """
+        """Input shape [batch, seq, feats]"""
         self.rnn.flatten_parameters()  # Enables faster multi-GPU training.
         output = inp
         rnn_output, _ = self.rnn(output)
         return rnn_output
+
 
 class SandglassetBlock(nn.Module):
     def __init__(
@@ -153,7 +145,7 @@ class SandglassetBlock(nn.Module):
         dropout=0,
         block_i=2,
         model_n_block=6,
-        chunk_size=64
+        chunk_size=64,
     ):
         super(SandglassetBlock, self).__init__()
         self.intra_RNN = SingleRNN(
@@ -172,15 +164,15 @@ class SandglassetBlock(nn.Module):
         # self.inter_linear = nn.Linear(in_chan, in_chan)
         self.inter_norm = nn.GroupNorm(1, in_chan)
 
-        if block_i < model_n_block//2:
+        if block_i < model_n_block // 2:
             kernel_size = 4 ** (block_i)
         else:
-            kernel_size = 4 ** (model_n_block-block_i-1)
+            kernel_size = 4 ** (model_n_block - block_i - 1)
         self.downsampler = nn.AvgPool1d(kernel_size, stride=kernel_size)
-        self.upsampler = nn.Upsample(size=chunk_size, mode='linear', align_corners=True)
+        self.upsampler = nn.Upsample(size=chunk_size, mode="linear", align_corners=True)
 
     def forward(self, x, skip_connect=None, spk_inp=None):
-        """ Input shape : [batch, feats, chunk_size, num_chunks] """
+        """Input shape : [batch, feats, chunk_size, num_chunks]"""
         # B, N, K, L = x.size()
         # output = x  # for skip connection
         B, D, K, S = x.size()
@@ -194,18 +186,18 @@ class SandglassetBlock(nn.Module):
         x = x + local_output
 
         # Inter-chunk processing
-        global_input = x.permute(3, 0, 1, 2).contiguous().view(S*B, D, K)
+        global_input = x.permute(3, 0, 1, 2).contiguous().view(S * B, D, K)
         # downsample
         global_input = self.downsampler(global_input)
         Q = global_input.size(-1)
-        global_input = global_input.transpose(1, 2).reshape(S, B*Q, D)
+        global_input = global_input.transpose(1, 2).reshape(S, B * Q, D)
         if skip_connect is not None:
             global_input = global_input + skip_connect
         global_output, attns = self.inter_RNN(global_input)
 
         skip_connect_output = global_output.clone()
         # [S, B*Q, D] -> [B, D*S, Q]
-        global_output = global_output.view(S, B, Q, D).permute(1, 3, 0, 2).reshape(B, D*S, Q)
+        global_output = global_output.view(S, B, Q, D).permute(1, 3, 0, 2).reshape(B, D * S, Q)
         # [B, D*S, Q] -> [B, D, K, S]
         global_output = self.upsampler(global_output).view(B, D, S, K).transpose(2, 3).contiguous()
         global_output = self.inter_norm(global_output).view(B, D, K, S)
@@ -214,7 +206,6 @@ class SandglassetBlock(nn.Module):
 
 
 class Decoder(nn.Module):
-
     def __init__(self, in_chan, kernel_size):
         super().__init__()
         self.basis_lin = nn.Linear(in_chan, kernel_size, bias=False)
@@ -234,22 +225,23 @@ class Decoder(nn.Module):
         """
         # Map frame dims back to window length, [B, C, D, I] -> [B, C, I, M]
         est_frames = self.basis_lin(est_frames.transpose(2, 3))
-        est_sigs = self.overlap_and_add(est_frames,  self.kernel_size // 2)
+        est_sigs = self.overlap_and_add(est_frames, self.kernel_size // 2)
         return est_sigs
 
     def merge_feature(self, input):
         B, C, I, M = input.shape
         input = input.view(B, C, -1, M * 2)
 
-        input1 = input[:, :, :, :M].contiguous().view(B, C, -1)[:, :, M//2:]
-        input2 = input[:, :, :, M:].contiguous().view(B, C, -1)[:, :, :-M//2]
+        input1 = input[:, :, :, :M].contiguous().view(B, C, -1)[:, :, M // 2 :]
+        input2 = input[:, :, :, M:].contiguous().view(B, C, -1)[:, :, : -M // 2]
         output = input1 + input2
 
         return output.contiguous()
 
-    ## Below are the methods to be called by the main methods 
+    ## Below are the methods to be called by the main methods
     def overlap_and_add(self, signal, frame_step):
         import math
+
         outer_dimensions = signal.size()[:-2]
         frames, frame_length = signal.size()[-2:]
         subframe_length = math.gcd(frame_length, frame_step)
@@ -268,28 +260,30 @@ class Decoder(nn.Module):
 
 
 class Sandglasset2(BaseModel):
-    def __init__(self,
-                 n_feats=64,
-                 n_src=2,
-                 out_chan=64,
-                 bn_chan=128,
-                 hid_size=128,
-                 chunk_size=250,
-                 hop_size=125,
-                 n_repeats=6,
-                 n_head=8,
-                 norm_type='gLN',
-                 mask_act='sigmoid',
-                 bidirectional=True,
-                 rnn_type='LSTM',
-                 num_layers=1,
-                 dropout=0,
-                 # encoder/decoder
-                 kernel_size=2,
-                 sr=16000):
+    def __init__(
+        self,
+        n_feats=64,
+        n_src=2,
+        out_chan=64,
+        bn_chan=128,
+        hid_size=128,
+        chunk_size=250,
+        hop_size=125,
+        n_repeats=6,
+        n_head=8,
+        norm_type="gLN",
+        mask_act="sigmoid",
+        bidirectional=True,
+        rnn_type="LSTM",
+        num_layers=1,
+        dropout=0,
+        # encoder/decoder
+        kernel_size=2,
+        sr=16000,
+    ):
         super(Sandglasset2, self).__init__(sample_rate=sr)
         # encoder part
-        self.encoder = nn.Conv1d(1, n_feats, kernel_size=kernel_size, stride=kernel_size//2, bias=False)
+        self.encoder = nn.Conv1d(1, n_feats, kernel_size=kernel_size, stride=kernel_size // 2, bias=False)
         self.enc_LN = nn.GroupNorm(1, n_feats, eps=1e-8)
         self.bottleneck = nn.Conv1d(n_feats, bn_chan, 1, bias=False)
         self.seg_norm = nn.GroupNorm(1, bn_chan, eps=1e-8)
@@ -298,23 +292,15 @@ class Sandglasset2(BaseModel):
         # separation part
         sep = nn.ModuleList([])
         for x in range(n_repeats):
-            sep.append(SandglassetBlock(
-                bn_chan,
-                hid_size,
-                n_head,
-                norm_type,
-                bidirectional,
-                rnn_type,
-                num_layers,
-                dropout,
-                x,
-                n_repeats,
-                chunk_size
-            ))
+            sep.append(
+                SandglassetBlock(
+                    bn_chan, hid_size, n_head, norm_type, bidirectional, rnn_type, num_layers, dropout, x, n_repeats, chunk_size
+                )
+            )
         self.sep_net = sep
 
         # Masking generat part
-        sep_out_conv = nn.Conv2d(bn_chan, n_src*n_feats, 1)
+        sep_out_conv = nn.Conv2d(bn_chan, n_src * n_feats, 1)
         self.first_out = nn.Sequential(nn.PReLU(), sep_out_conv, nn.Softplus())
 
         self.out_norm = nn.GroupNorm(1, n_feats, eps=1e-8)
@@ -325,7 +311,7 @@ class Sandglasset2(BaseModel):
         self.n_src = n_src
         self.out_chan = n_feats
         self.chunk_size = chunk_size
-        self.hop_size =hop_size
+        self.hop_size = hop_size
         self.kernel_size = kernel_size
 
     def forward(self, input_wav):
@@ -353,7 +339,7 @@ class Sandglasset2(BaseModel):
         # separation part
         skip_connect_outputs = []
         for i, block in enumerate(self.sep_net):
-            if i < len(self.sep_net)//2:
+            if i < len(self.sep_net) // 2:
                 output, skip_connect_output = block(output)
                 skip_connect_outputs.append(skip_connect_output)
             else:
@@ -362,24 +348,24 @@ class Sandglasset2(BaseModel):
 
         # Masking part
         output = self.first_out(output)
-        est_masks = self.merge_feature(output.view(B * C, -1, K, S), ori_len).view(B*C, -1, I)
+        est_masks = self.merge_feature(output.view(B * C, -1, K, S), ori_len).view(B * C, -1, I)
         # Result
         est_masks = self.out_norm(F.relu(est_masks)).view(B, C, -1, I)
 
         # Decoder
         masked_mix_w = est_masks * mixture_w.unsqueeze(1)
-        estmite = self.decoder(masked_mix_w)[:, :, self.hop_size:-(rest+self.hop_size)]
+        estmite = self.decoder(masked_mix_w)[:, :, self.hop_size : -(rest + self.hop_size)]
         if was_one_d:
             return estmite.squeeze(0)
         return estmite
-    
-    def normalize_signal(self, sig, sig_lens, snr=0.):
-        sig = sig-sig.sum(-1, keepdim=True)/sig_lens
-        sig = sig/(torch.max(torch.abs(sig), -1, keepdim=True)[0]+1e-12)
+
+    def normalize_signal(self, sig, sig_lens, snr=0.0):
+        sig = sig - sig.sum(-1, keepdim=True) / sig_lens
+        sig = sig / (torch.max(torch.abs(sig), -1, keepdim=True)[0] + 1e-12)
         if snr == 0:
             return sig
-        return sig/(10**(snr/20.))
-    
+        return sig / (10 ** (snr / 20.0))
+
     def pad_zeros(self, signals, sig_lens):
         B, T = signals.shape
         win_len = self.kernel_size
@@ -392,7 +378,7 @@ class Sandglasset2(BaseModel):
         signals = torch.cat([pad_aux, signals, pad_aux], 1)
         sig_lens += 2 * self.hop_size
         return signals, rest, sig_lens
-    
+
     def split_feature(self, x, segment_size):
         # split the feature into chunks of segment size
         # input is the features: (B, D, T)
@@ -405,19 +391,23 @@ class Sandglasset2(BaseModel):
             stride=(segment_size // 2, 1),
         )
         return unfolded.reshape(batch, dim, segment_size, -1), ori_len
-    
+
     def merge_feature(self, x, ori_len):
         # merge the splitted features into full utterance
         # input is the features: (B, D, K, S)
 
         batch, dim, segment_size, n_segments = x.size()
         to_unfold = x.reshape(batch, dim * segment_size, n_segments)
-        x = torch.nn.functional.fold(
-            to_unfold, (ori_len, 1),
-            kernel_size=(segment_size, 1),
-            padding=(segment_size, 0),
-            stride=(segment_size // 2, 1),
-        ) / 2.
+        x = (
+            torch.nn.functional.fold(
+                to_unfold,
+                (ori_len, 1),
+                kernel_size=(segment_size, 1),
+                padding=(segment_size, 0),
+                stride=(segment_size // 2, 1),
+            )
+            / 2.0
+        )
 
         return x.reshape(batch, dim, ori_len)
 
@@ -437,7 +427,7 @@ class Sandglasset2(BaseModel):
         inp_len = y.shape[axis]
         output_len = x.shape[axis]
         return nn.functional.pad(x, [0, inp_len - output_len])
-    
+
     def get_model_args(self):
         model_args = {"n_src": 2}
         return model_args

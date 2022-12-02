@@ -5,9 +5,10 @@
 # LastEditTime: 2022-02-20 14:56:42
 ###
 
-from itertools import permutations
 import torch
+
 from torch import nn
+from itertools import permutations
 from scipy.optimize import linear_sum_assignment
 
 

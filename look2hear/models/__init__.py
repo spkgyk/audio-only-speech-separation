@@ -4,10 +4,10 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-09-15 11:32:37
 ###
-from .convtasnet import ConvTasNet
-from .sepformer import Sepformer
-from .dprnn import DPRNNTasNet
 from .afrcnn import AFRCNN
+from .dprnn import DPRNNTasNet
+from .sepformer import Sepformer
+from .convtasnet import ConvTasNet
 
 
 from .TDANet import TDANet
@@ -29,13 +29,8 @@ def register_model(custom_model):
         custom_model: Custom model to register.
 
     """
-    if (
-        custom_model.__name__ in globals().keys()
-        or custom_model.__name__.lower() in globals().keys()
-    ):
-        raise ValueError(
-            f"Model {custom_model.__name__} already exists. Choose another name."
-        )
+    if custom_model.__name__ in globals().keys() or custom_model.__name__.lower() in globals().keys():
+        raise ValueError(f"Model {custom_model.__name__} already exists. Choose another name.")
     globals().update({custom_model.__name__: custom_model})
 
 
