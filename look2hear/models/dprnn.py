@@ -409,6 +409,7 @@ class DPRNNTasNet(BaseModel):
         context=1,
         num_spk=2,
         bidirectional=True,
+        rnn_type="LSTM",
     ):
         super(DPRNNTasNet, self).__init__(sample_rate=sample_rate)
 
@@ -435,6 +436,7 @@ class DPRNNTasNet(BaseModel):
             segment_size=segment_size,
             full_causal=False,
             bidirectional=bidirectional,
+            rnn_type = rnn_type,
         )
 
         # decoder
