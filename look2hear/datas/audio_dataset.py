@@ -38,7 +38,14 @@ class WSJ0DataModule(data.Dataset):
 
     dataset_name = "wsj0-mix"
 
-    def __init__(self, json_dir, n_src=2, sample_rate=8000, segment=4.0, normalize_audio=False):
+    def __init__(
+        self,
+        json_dir: str = "",
+        n_src: int = 2,
+        sample_rate: int = 8000,
+        segment: float = 4.0,
+        normalize_audio: bool = False,
+    ):
         super().__init__()
         # Task setting
         self.json_dir = json_dir

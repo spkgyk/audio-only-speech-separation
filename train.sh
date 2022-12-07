@@ -4,4 +4,4 @@
  # @Email: lk21@mails.tsinghua.edu.cn
  # @LastEditTime: 2022-06-02 16:25:26
 ### 
-python -B audio_train.py --conf_dir=/data4/anxihao/Audio-Separation/configs/unet_base.yml
+python -B audio_train.py --conf_dir=/data2/anxihao/audio-separation/configs/dprnn_wsj0.yml

@@ -114,8 +114,7 @@ def main(config):
 
     # Don't ask GPU if they are not available.
     gpus = config["training"]["gpus"] if torch.cuda.is_available() else None
-    # distributed_backend = "ddp" if torch.cuda.is_available() else None
-    distributed_backend = config["training"]["parallel"] if torch.cuda.is_available() else None
+    distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     logger_dir = os.path.join(os.getcwd(), "Experiments", "tensorboard_logs")
@@ -127,6 +126,7 @@ def main(config):
         default_root_dir=exp_dir,
         gpus=gpus,
         accelerator=distributed_backend,
+        strategy="ddp",
         limit_train_batches=1.0,  # Useful for fast experiment
         gradient_clip_val=5.0,
         logger=comet_logger,

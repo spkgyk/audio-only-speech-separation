@@ -1,0 +1,73 @@
+# Network config
+audionet:
+  audionet_name: DPRNNTasNet
+  audionet_config:
+    feature_dim: 64
+    hidden_dim: 128
+    win: 32
+    layer: 6
+    segment_size: 250
+    num_spk: 2
+    bidirectional: True
+    rnn_type: LSTM
+
+# Loss config
+loss:
+  train:
+    loss_func: PITLossWrapper
+    sdr_type: pairwise_neg_snr
+    config:
+      pit_from: pw_mtx
+      threshold_byloss: true
+  val:
+    loss_func: PITLossWrapper
+    sdr_type: pairwise_neg_sisdr
+    config:
+      pit_from: pw_mtx
+      threshold_byloss: false
+
+# Training config
+training:
+  system: AudioLightningModule
+  gpus: [0,1,2,3,4,5,6,7]
+  parallel: ddp
+  epochs: 500
+  early_stop:
+    monitor: val_loss/dataloader_idx_0
+    mode: min
+    patience: 30
+    verbose: true
+  
+# Optim config
+optimizer:
+  optim_name: adam
+  lr: 0.001
+  weight_decay: 0
+
+# Sche config
+scheduler: 
+  sche_name: ReduceLROnPlateau
+  sche_config:
+    patience: 15
+    factor: 0.5
+
+# Data config
+datamodule:
+  data_name: LRS2DataModule
+  data_config:
+    train_dir: DataPreProcess/WSJ0Audio/tr
+    valid_dir: DataPreProcess/WSJ0Audio/cv
+    test_dir: DataPreProcess/WSJ0Audio/tt
+    n_src: 2
+    sample_rate: 8000
+    fps: 25
+    segment: 4.0
+    normalize_audio: false
+    batch_size: 2
+    num_workers: 8
+    pin_memory: true
+    persistent_workers: false
+    audio_only: true
+
+exp:
+  exp_name: dprnn_baseline_wsj0_2mix_allgpu
