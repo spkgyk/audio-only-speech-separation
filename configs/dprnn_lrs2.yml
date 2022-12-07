@@ -59,9 +59,9 @@ datamodule:
     valid_dir: DataPreProcess/LRS2Audio/cv
     test_dir: DataPreProcess/LRS2Audio/tt
     n_src: 2
-    sample_rate: 8000
+    sample_rate: 16000
     fps: 25
-    segment: 4.0
+    segment: 2.0
     normalize_audio: false
     batch_size: 2
     num_workers: 8
