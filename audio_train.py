@@ -6,6 +6,7 @@
 ###
 import os
 import json
+import yaml
 import torch
 import argparse
 import look2hear.datas
@@ -14,7 +15,6 @@ import look2hear.models
 import look2hear.system
 import look2hear.losses
 import look2hear.metrics
-
 import pytorch_lightning as pl
 
 from look2hear.system import make_optimizer
@@ -22,32 +22,27 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks.progress.rich_progress import *
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from look2hear.utils import print_only, MyRichProgressBar, RichProgressBarTheme
+from look2hear.utils.parser_utils import prepare_parser_from_dict, parse_args_as_dict
 
 import warnings
 
 warnings.filterwarnings("ignore")
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--conf_dir",
-    default="local/conf.yml",
-    help="Full path to save best validation model",
-)
 
 
 def main(config):
     print_only("Instantiating datamodule <{}>".format(config["datamodule"]["data_name"]))
     datamodule: object = getattr(look2hear.datas, config["datamodule"]["data_name"])(**config["datamodule"]["data_config"])
     datamodule.setup()
-
     train_loader, val_loader, test_loader = datamodule.make_loader
-    # Define model and optimizer
+
+    # Define model
     print_only("Instantiating AudioNet <{}>".format(config["audionet"]["audionet_name"]))
     model = getattr(look2hear.models, config["audionet"]["audionet_name"])(
         sample_rate=config["datamodule"]["data_config"]["sample_rate"],
         **config["audionet"]["audionet_config"],
     )
-    # import pdb; pdb.set_trace()
+
+    # Define optimizer
     print_only("Instantiating Optimizer <{}>".format(config["optimizer"]["optim_name"]))
     optimizer = make_optimizer(model.parameters(), **config["optimizer"])
 
@@ -60,11 +55,10 @@ def main(config):
         )
 
     # Just after instantiating, save the args. Easy loading in the future.
-    config["main_args"]["exp_dir"] = os.path.join(os.getcwd(), "Experiments", "checkpoint", config["exp"]["exp_name"])
-    exp_dir = config["main_args"]["exp_dir"]
+    exp_dir = os.path.join(os.getcwd(), "Experiments", "checkpoint", config["exp"]["exp_name"])
+    config["main_args"]["exp_dir"] = exp_dir
     os.makedirs(exp_dir, exist_ok=True)
-    conf_path = os.path.join(exp_dir, "conf.yml")
-    with open(conf_path, "w") as outfile:
+    with open(os.path.join(exp_dir, "conf.yml"), "w") as outfile:
         yaml.safe_dump(config, outfile)
 
     # Define Loss function.
@@ -80,6 +74,7 @@ def main(config):
         ),
     }
 
+    # Instantiate system
     print_only("Instantiating System <{}>".format(config["training"]["system"]))
     system = getattr(look2hear.system, config["training"]["system"])(
         audio_model=model,
@@ -92,7 +87,7 @@ def main(config):
         config=config,
     )
 
-    # Define callbacks
+    # Define the callbacks
     print_only("Instantiating ModelCheckpoint")
     callbacks = []
     checkpoint_dir = os.path.join(exp_dir)
@@ -120,6 +115,7 @@ def main(config):
     logger_dir = os.path.join(os.getcwd(), "Experiments", "tensorboard_logs")
     comet_logger = TensorBoardLogger(logger_dir, name=config["exp"]["exp_name"])
 
+    # Instantiate pytorch lightning trainer
     trainer = pl.Trainer(
         max_epochs=config["training"]["epochs"],
         callbacks=callbacks,
@@ -133,33 +129,34 @@ def main(config):
         # sync_batchnorm=True,
         # fast_dev_run=True,
     )
+
+    print_only("Starting Training")
     trainer.fit(system)
     print_only("Finished Training")
+
+    # save best k models as json file
     best_k = {k: v.item() for k, v in checkpoint.best_k_models.items()}
     with open(os.path.join(exp_dir, "best_k_models.json"), "w") as f:
         json.dump(best_k, f, indent=0)
 
+    # load best model, save it as best_model.pth
     state_dict = torch.load(checkpoint.best_model_path)
     system.load_state_dict(state_dict=state_dict["state_dict"])
     system.cpu()
-
     to_save = system.audio_model.serialize()
     torch.save(to_save, os.path.join(exp_dir, "best_model.pth"))
 
 
 if __name__ == "__main__":
-    import yaml
-    from pprint import pprint
-    from look2hear.utils.parser_utils import (
-        prepare_parser_from_dict,
-        parse_args_as_dict,
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--conf_dir", default=None, help="Path to the training config file", required=True)
     args = parser.parse_args()
+
+    # Load config file
     with open(args.conf_dir) as f:
         def_conf = yaml.safe_load(f)
-    parser = prepare_parser_from_dict(def_conf, parser=parser)
 
+    parser = prepare_parser_from_dict(def_conf, parser=parser)
     arg_dic, plain_args = parse_args_as_dict(parser, return_plain_args=True)
-    # pprint(arg_dic)
+
     main(arg_dic)

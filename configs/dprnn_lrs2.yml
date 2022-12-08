@@ -70,4 +70,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: dprnn_baseline_wsj0_2mix_allgpu
+  exp_name: dprnn_baseline_lrs2_2mix_allgpu
