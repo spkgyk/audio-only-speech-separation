@@ -1,15 +1,15 @@
 # Network config
 audionet:
-  audionet_name: DPRNNTasNet
+  audionet_name: TasNet
   audionet_config:
-    feature_dim: 64
+    enc_dim: 64
     hidden_dim: 128
-    win: 32
+    win: 2
     layer: 6
-    segment_size: 250
+    block_size: 250
     num_spk: 2
     bidirectional: True
-    rnn_type: LSTM
+    module: DPRNN
 
 # Loss config
 loss:
