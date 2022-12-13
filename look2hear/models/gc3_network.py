@@ -1,12 +1,10 @@
 import torch
 import torch.nn as nn
 
-from .basics import split_feature, merge_feature
-from .groupcomm import GC_RNN, DP_Wrapper, SudoRMRF_Wrapper
-from .tcn import GC_TCN, TCN
+from .utils import GC_RNN, DP_Wrapper, SudoRMRF_Wrapper, TCN_Wrapper, BaseModel, split_feature, merge_feature
 
 
-class TasNet(nn.Module):
+class TasNet(BaseModel):
     def __init__(
         self,
         enc_dim=128,
@@ -20,7 +18,7 @@ class TasNet(nn.Module):
         group_size=16,
         block_size=24,
     ):
-        super(TasNet, self).__init__()
+        super(TasNet, self).__init__(sample_rate=sample_rate)
 
         assert module in [
             "DPRNN",
@@ -43,7 +41,8 @@ class TasNet(nn.Module):
         self.group_size = group_size
         self.win = int(sample_rate * win / 1000)
         self.stride = self.win // 2
-        self.use_gc3 = "GC_" in module
+        self.model_name = module
+        self.use_gc3 = "GC_" in self.model_name
         if not self.use_gc3:
             self.group_size = 1
 
@@ -57,7 +56,7 @@ class TasNet(nn.Module):
             self.context_dec = GC_RNN(self.enc_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
 
         # sequence modeling
-        if module in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet"]:
+        if self.model_name in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet"]:
             self.seq_model = DP_Wrapper(
                 self.enc_dim,
                 self.hidden_dim,
@@ -66,37 +65,27 @@ class TasNet(nn.Module):
                 num_group=self.group_size,
                 layer=layer,
                 block_size=block_size,
-                module=module,
+                module=self.model_name,
             )
-        elif module == "GC_TCN":
-            self.seq_model = GC_TCN(
+        elif self.model_name in ["TCN", "GC_TCN"]:
+            self.seq_model = TCN_Wrapper(
                 self.enc_dim,
                 self.enc_dim,
                 self.enc_dim * 4,
                 layer=layer,
                 stack=2,
+                module=self.model_name,
                 kernel=3,
-                causal=False,
                 num_group=self.group_size,
+                BN_dim=self.hidden_dim,
             )
-        elif module == "TCN":
-            self.seq_model = TCN(
-                self.enc_dim,
-                self.enc_dim,
-                self.hidden_dim,
-                self.enc_dim * 4,
-                layer=layer,
-                stack=2,
-                kernel=3,
-                causal=False,
-            )
-        elif module in ["GC_SudoRMRF", "SudoRMRF"]:
+        elif self.model_name in ["GC_SudoRMRF", "SudoRMRF"]:
             self.seq_model = SudoRMRF_Wrapper(
                 out_channels=self.enc_dim,
                 in_channels=self.hidden_dim * 2,
                 upsampling_depth=5,
                 layer=layer,
-                module=module,
+                module=self.model_name,
                 num_group=self.group_size,
             )
 

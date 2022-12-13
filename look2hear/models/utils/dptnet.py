@@ -15,7 +15,7 @@ from torch.nn.modules.container import ModuleList
 from torch.nn.modules.normalization import LayerNorm
 from torch.nn.modules.activation import MultiheadAttention
 
-from .basics import TAC
+from .gc3_basics import TAC
 
 
 class TransformerOptimizer(object):

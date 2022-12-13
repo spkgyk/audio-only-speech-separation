@@ -23,8 +23,7 @@ def pad_to_appropriate_length(x, lcm):
     if values_to_pad:
         appropriate_shape = x.shape
         padded_x = torch.zeros(
-            list(appropriate_shape[:-1])
-            + [appropriate_shape[-1] + lcm - values_to_pad],
+            list(appropriate_shape[:-1]) + [appropriate_shape[-1] + lcm - values_to_pad],
             dtype=torch.float32,
         ).to(x.device)
         padded_x[..., : x.shape[-1]] = x
@@ -41,7 +40,9 @@ class BaseModel(nn.Module):
     def forward(self, *args, **kwargs):
         raise NotImplementedError
 
-    def sample_rate(self,):
+    def sample_rate(
+        self,
+    ):
         return self._sample_rate
 
     @staticmethod
@@ -57,11 +58,9 @@ class BaseModel(nn.Module):
 
     @staticmethod
     def from_pretrain(pretrained_model_conf_or_path, *args, **kwargs):
-        from . import get
+        from .. import get
 
-        conf = torch.load(
-            pretrained_model_conf_or_path, map_location="cpu"
-        )  # Attempt to find the model and instantiate it.
+        conf = torch.load(pretrained_model_conf_or_path, map_location="cpu")  # Attempt to find the model and instantiate it.
 
         model_class = get(conf["model_name"])
         # model_class = get("Conv_TasNet")
@@ -80,7 +79,8 @@ class BaseModel(nn.Module):
         # Additional infos
         infos = dict()
         infos["software_versions"] = dict(
-            torch_version=torch.__version__, pytorch_lightning_version=pl.__version__,
+            torch_version=torch.__version__,
+            pytorch_lightning_version=pl.__version__,
         )
         model_conf["infos"] = infos
         return model_conf

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .basics import TAC
+from .gc3_basics import TAC
 
 
 class _LayerNorm(nn.Module):

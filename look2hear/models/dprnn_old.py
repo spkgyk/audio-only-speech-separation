@@ -10,7 +10,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .base_model import BaseModel
+from .utils import BaseModel
 from torch.autograd import Variable
 
 
@@ -403,7 +403,7 @@ class DPRNNTasNet(BaseModel):
         feature_dim=128,
         hidden_dim=256,
         sample_rate=16000,
-        win=32,
+        win=4,
         layer=6,
         segment_size=32,
         context=1,
@@ -417,6 +417,7 @@ class DPRNNTasNet(BaseModel):
         self.freq_win = sample_rate * win // 1000
         self.freq_stride = self.freq_win // 4
         self.encoder = Encoder(1, self.freq_win // 2 + 1, self.freq_win)
+        self.model_name = "DPRNN_Old"
 
         self.feature_dim = feature_dim
         self.hidden_dim = hidden_dim
@@ -436,7 +437,7 @@ class DPRNNTasNet(BaseModel):
             segment_size=segment_size,
             full_causal=False,
             bidirectional=bidirectional,
-            rnn_type = rnn_type,
+            rnn_type=rnn_type,
         )
 
         # decoder

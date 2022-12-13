@@ -1,9 +1,10 @@
 import torch.nn as nn
 
-from .basics import TAC, ProjRNN, split_feature, merge_feature
+from .gc3_basics import TAC, ProjRNN, split_feature, merge_feature
 from .dptnet import DPTNet, GC_DPTNet
 from .dprnn import DPRNN, GC_DPRNN
 from .sudo_rm_rf import UConvBlock, GC_UConvBlock
+from .tcn import TCN, GC_TCN
 
 # GroupComm-RNN
 class GC_RNN(nn.Module):
@@ -149,3 +150,45 @@ class SudoRMRF_Wrapper(nn.Module):
 
     def forward(self, input):
         return self.sudo_rmrf_layers(input)
+
+
+class TCN_Wrapper(nn.Module):
+    def __init__(self, input_dim, output_dim, hidden_dim, layer, stack, module, BN_dim=128, kernel=3, skip=True, dilated=True, num_group=2):
+        super(TCN_Wrapper, self).__init__()
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
+        self.layer = layer
+        self.stack = stack
+        self.kernel = kernel
+        self.skip = skip
+        self.dilated = dilated
+
+        if module == "TCN":
+            self.tcn = TCN(
+                input_dim=self.input_dim,
+                output_dim=self.output_dim,
+                BN_dim=BN_dim,
+                hidden_dim=self.hidden_dim,
+                layer=self.layer,
+                stack=self.stack,
+                kernel=self.kernel,
+                skip=self.skip,
+                dilated=self.dilated,
+            )
+        elif module == "GC_TCN":
+            self.tcn = GC_TCN(
+                input_dim=self.input_dim,
+                output_dim=self.output_dim,
+                hidden_dim=self.hidden_dim,
+                layer=self.layer,
+                stack=self.stack,
+                kernel=self.kernel,
+                skip=self.skip,
+                dilated=self.dilated,
+                num_group=num_group,
+            )
+
+    def forward(self, input):
+        return self.tcn(input)

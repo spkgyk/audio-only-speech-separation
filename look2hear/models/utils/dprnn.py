@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from .basics import ProjRNN, TAC
+from .gc3_basics import ProjRNN, TAC
 
 # dual-path RNN
 class DPRNN(nn.Module):
