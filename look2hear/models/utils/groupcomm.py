@@ -1,8 +1,8 @@
 import torch.nn as nn
 
 from .gc3_basics import TAC, ProjRNN, split_feature, merge_feature
-from .dptnet import DPTNet, GC_DPTNet
-from .dprnn import DPRNN, GC_DPRNN
+from .dptnet import DPTNet, GC_DPTNet, Unfolded_DPTNet
+from .dprnn import DPRNN, GC_DPRNN, Unfolded_DPRNN
 from .sudo_rm_rf import UConvBlock, GC_UConvBlock
 from .tcn import TCN, GC_TCN
 
@@ -61,7 +61,14 @@ class DP_Wrapper(nn.Module):
     ):
         super(DP_Wrapper, self).__init__()
 
-        assert module in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet"], "Only DPRNN, GC_DPRNN, DPTNet and GC_DPTNet are supported now."
+        assert module in [
+            "DPRNN",
+            "GC_DPRNN",
+            "Unfolded_DPRNN",
+            "DPTNet",
+            "GC_DPTNet",
+            "Unfolded_DPTNet",
+        ]
 
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -91,6 +98,14 @@ class DP_Wrapper(nn.Module):
                 num_layers=layer,
                 bidirectional=bidirectional,
             )
+        elif module == "Unfolded_DPRNN":
+            self.seq_model = Unfolded_DPRNN(
+                self.input_dim,
+                self.hidden_dim,
+                self.output_dim * self.num_spk,
+                num_layers=layer,
+                bidirectional=bidirectional,
+            )
         elif module == "DPTNet":
             self.seq_model = DPTNet(
                 self.input_dim,
@@ -104,6 +119,13 @@ class DP_Wrapper(nn.Module):
                 self.hidden_dim,
                 self.output_dim * self.num_spk,
                 num_group=self.num_group,
+                num_layers=layer,
+            )
+        elif module == "Unfolded_DPTNet":
+            self.seq_model = Unfolded_DPTNet(
+                self.input_dim,
+                self.hidden_dim,
+                self.output_dim * self.num_spk,
                 num_layers=layer,
             )
 

@@ -163,7 +163,7 @@ class SingleTransformer(nn.Module):
 
 # dual-path Transformer
 class DPTNet(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, dropout=0, num_layers=1):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=1):
         super(DPTNet, self).__init__()
 
         self.input_size = input_size
@@ -203,7 +203,7 @@ class DPTNet(nn.Module):
 
 # GroupComm-DPTNet
 class GC_DPTNet(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_group=16, dropout=0, num_layers=1):
+    def __init__(self, input_size, hidden_size, output_size, num_group=16, num_layers=1):
         super(GC_DPTNet, self).__init__()
 
         self.input_size = input_size
@@ -248,5 +248,45 @@ class GC_DPTNet(nn.Module):
         output = output.view(batch_size * self.num_group, -1, dim1, dim2)
         output = self.output(output).view(batch_size, self.num_group, self.num_spk, -1, dim1, dim2)
         output = output.transpose(1, 2).contiguous()
+
+        return output
+
+
+# dual-path Transformer
+class Unfolded_DPTNet(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=1):
+        super(Unfolded_DPTNet, self).__init__()
+
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+
+        # dual-path Transformer
+        self.row_xfmr = SingleTransformer(input_size=input_size, dim_feedforward=hidden_size)
+        self.col_xfmr = SingleTransformer(input_size=input_size, dim_feedforward=hidden_size)
+
+        self.concat_block = nn.Sequential(nn.Conv2d(input_size, input_size, 1, 1, groups=input_size), nn.PReLU())
+
+        self.output = nn.Conv2d(input_size, output_size, 1)
+
+    def forward(self, input):
+        # input shape: batch, N, dim1, dim2
+        # apply RNN on dim1 first and then dim2
+
+        batch_size, _, dim1, dim2 = input.shape
+        output = input
+        for i in range(self.num_layers):
+            row_input = output.permute(0, 3, 2, 1).contiguous().view(batch_size * dim2, dim1, -1)  # B*dim2, dim1, N
+            row_output = self.row_xfmr(row_input)  # B*dim2, dim1, H
+            row_output = row_output.view(batch_size, dim2, dim1, -1).permute(0, 3, 2, 1).contiguous()  # B, N, dim1, dim2
+            output = output + row_output
+
+            col_input = output.permute(0, 2, 3, 1).contiguous().view(batch_size * dim1, dim2, -1)  # B*dim1, dim2, N
+            col_output = self.col_xfmr(col_input)  # B*dim1, dim2, H
+            col_output = col_output.view(batch_size, dim1, dim2, -1).permute(0, 3, 1, 2).contiguous()  # B, N, dim1, dim2
+            output = self.concat_block(output + col_output)
+
+        output = self.output(output)
 
         return output

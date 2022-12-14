@@ -29,7 +29,9 @@ class TasNet(BaseModel):
             "TCN",
             "GC_SudoRMRF",
             "SudoRMRF",
-        ], "Only DPRNN, GC_DPRNN, DPTNet, GC_DPTNet, GC_TCN, TCN, GC_SudoRMRF and SudoRMRF are supported now."
+            "Unfolded_DPRNN",
+            "Unfolded_DPTNet",
+        ]
 
         # hyper parameters
         self.num_spk = num_spk
@@ -56,7 +58,7 @@ class TasNet(BaseModel):
             self.context_dec = GC_RNN(self.enc_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
 
         # sequence modeling
-        if self.model_name in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet"]:
+        if self.model_name in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet", "Unfolded_DPRNN", "Unfolded_DPTNet"]:
             self.seq_model = DP_Wrapper(
                 self.enc_dim,
                 self.hidden_dim,
