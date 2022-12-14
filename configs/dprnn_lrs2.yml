@@ -55,9 +55,9 @@ scheduler:
 datamodule:
   data_name: LRS2DataModule
   data_config:
-    train_dir: DataPreProcess/LRS2Audio/tr
-    valid_dir: DataPreProcess/LRS2Audio/cv
-    test_dir: DataPreProcess/LRS2Audio/tt
+    train_dir: data-preprocess/LRS2Audio/tr
+    valid_dir: data-preprocess/LRS2Audio/cv
+    test_dir: data-preprocess/LRS2Audio/tt
     n_src: 2
     sample_rate: 16000
     fps: 25
