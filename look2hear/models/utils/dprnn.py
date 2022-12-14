@@ -18,9 +18,7 @@ class DPRNN(nn.Module):
         self.row_norm = nn.ModuleList([])
         self.col_norm = nn.ModuleList([])
         for i in range(num_layers):
-            self.row_rnn.append(
-                ProjRNN(input_size, hidden_size, "LSTM", dropout, bidirectional=True)
-            )  # intra-segment RNN is always noncausal
+            self.row_rnn.append(ProjRNN(input_size, hidden_size, "LSTM", dropout, bidirectional=True))
             self.col_rnn.append(ProjRNN(input_size, hidden_size, "LSTM", dropout, bidirectional=bidirectional))
             self.row_norm.append(nn.GroupNorm(1, input_size, eps=1e-8))
             self.col_norm.append(nn.GroupNorm(1, input_size, eps=1e-8))
@@ -93,23 +91,19 @@ class GC_DPRNN(nn.Module):
             # intra-block
             row_input = output.permute(0, 3, 2, 1).contiguous().view(batch_size * self.num_group * dim2, dim1, -1)  # B*G*dim2, dim1, N/G
             row_output = self.row_rnn[i](row_input)  # B*G*dim2, dim1, N/G
-            row_output = (
-                row_output.view(batch_size * self.num_group, dim2, dim1, -1).permute(0, 3, 2, 1).contiguous()
-            )  # B*G, N/G, dim1, dim2
-            row_output = self.row_norm[i](row_output.view(batch_size * self.num_group, -1, dim1, dim2)).view(
-                output.shape
-            )  # B*G, N/G, dim1, dim2
+            row_output = row_output.view(batch_size * self.num_group, dim2, dim1, -1).permute(0, 3, 2, 1).contiguous()
+            # ^    B*G, N/G, dim1, dim2
+            row_output = self.row_norm[i](row_output.view(batch_size * self.num_group, -1, dim1, dim2)).view(output.shape)
+            # ^    B*G, N/G, dim1, dim2
             output = output + row_output  # B*G, N/G, dim1, dim2
 
             # inter-block
             col_input = output.permute(0, 2, 3, 1).contiguous().view(batch_size * self.num_group * dim1, dim2, -1)  # B*G*dim1, dim2, N/G
             col_output = self.col_rnn[i](col_input)  # B*G*dim1, dim2, N/G
-            col_output = (
-                col_output.view(batch_size * self.num_group, dim1, dim2, -1).permute(0, 3, 1, 2).contiguous()
-            )  # B*G, N/G, dim1, dim2
-            col_output = self.col_norm[i](col_output.view(batch_size * self.num_group, -1, dim1, dim2)).view(
-                output.shape
-            )  # B*G, N/G, dim1, dim2
+            col_output = col_output.view(batch_size * self.num_group, dim1, dim2, -1).permute(0, 3, 1, 2).contiguous()
+            # ^    B*G, N/G, dim1, dim2
+            col_output = self.col_norm[i](col_output.view(batch_size * self.num_group, -1, dim1, dim2)).view(output.shape)
+            # ^    B*G, N/G, dim1, dim2
             output = output + col_output  # B*G, N/G, dim1, dim2
 
         output = output.view(batch_size * self.num_group, -1, dim1, dim2)

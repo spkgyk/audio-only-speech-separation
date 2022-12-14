@@ -7,16 +7,16 @@ from .utils import GC_RNN, DP_Wrapper, SudoRMRF_Wrapper, TCN_Wrapper, BaseModel,
 class TasNet(BaseModel):
     def __init__(
         self,
-        enc_dim=128,
-        hidden_dim=256,
-        sample_rate=16000,
+        enc_dim=64,
+        hidden_dim=128,
         win=2,
         layer=6,
         num_spk=2,
         module="DPRNN",
-        context_size=32,
+        context_size=24,
         group_size=16,
-        block_size=24,
+        block_size=100,
+        sample_rate=16000,
     ):
         super(TasNet, self).__init__(sample_rate=sample_rate)
 

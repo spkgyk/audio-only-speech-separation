@@ -159,7 +159,6 @@ class ConvTasNet(BaseModel):
         num_spks=2,
         activate="relu",
         causal=False,
-        n_src=2,
         sample_rate=16000,
     ):
         super(ConvTasNet, self).__init__(sample_rate=sample_rate)

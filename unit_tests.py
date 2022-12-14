@@ -5,17 +5,31 @@ from time import time
 from look2hear.models import TDANet, AFRCNN, TasNet, Sepformer, ConvTasNet, DPRNNTasNet, Sandglasset
 from look2hear.losses import PITLossWrapper, pairwise_neg_snr
 from look2hear.system import make_optimizer
+from ptflops import get_model_complexity_info
 import warnings
 
 warnings.filterwarnings("ignore")
 
 
-def test_model(model, batch_size=2, length=16000, dry=False, device=None):
+def test_model(
+    model,
+    batch_size=4,
+    length=32000,
+    dry=False,
+    device=None,
+    epochs=5,
+):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") if device is None else device
-    epochs = 5
     loss = PITLossWrapper(pairwise_neg_snr, pit_from="pw_mtx")
     optimizer = make_optimizer(model.parameters(), optim_name="adam", lr=0.001, weight_decay=0)
     model = model.to(device)
+
+    total_macs = 0
+    total_params = 0
+    macs, params = get_model_complexity_info(model, (1, length), as_strings=False, print_per_layer_stat=False, verbose=False)
+    model.train()
+    total_macs += macs / 10.0**6
+    total_params += params / 10.0**6
 
     s = time()
     pbar = trange(epochs) if not dry else range(epochs)
@@ -28,7 +42,11 @@ def test_model(model, batch_size=2, length=16000, dry=False, device=None):
         optimizer.step()
         time_s = time() - s
         if not dry:
-            pbar.set_description("Model: {}, time taken: {:.2f}".format(model.model_name, time_s))
+            pbar.set_description(
+                "Model - {:<15} Time Taken (s) - {:<8} Device - {:<8} MACs (M) - {:<8} Params (M) - {:<8}".format(
+                    model.model_name, str(round(time_s, 2)), str(device), str(round(total_macs, 2)), str(round(total_params, 2))
+                )
+            )
 
 
 if __name__ == "__main__":
@@ -38,29 +56,29 @@ if __name__ == "__main__":
 
     print("\nGPU Results")
 
-    test_model(TDANet())
-    test_model(AFRCNN())
-    test_model(Sepformer())
-    test_model(ConvTasNet())
-    test_model(Sandglasset())
-    test_model(DPRNNTasNet())
-    test_model(TasNet(module="TCN"))
-    test_model(TasNet(module="DPRNN"))
-    test_model(TasNet(module="DPTNet"))
-    test_model(TasNet(module="SudoRMRF"))
-    test_model(TasNet(module="GC_TCN"))
-    test_model(TasNet(module="GC_DPRNN"))
-    test_model(TasNet(module="GC_DPTNet"))
-    test_model(TasNet(module="GC_SudoRMRF"))
+    # test_model(TDANet())
+    # test_model(AFRCNN())
+    # test_model(Sepformer())
+    # test_model(ConvTasNet())
+    # test_model(Sandglasset())
+    # test_model(DPRNNTasNet())
+    test_model(TasNet(module="TCN"), epochs=250)
+    test_model(TasNet(module="DPRNN"), epochs=250)
+    test_model(TasNet(module="DPTNet"), epochs=250)
+    test_model(TasNet(module="SudoRMRF"), epochs=250)
+    test_model(TasNet(module="GC_TCN"), epochs=250)
+    test_model(TasNet(module="GC_DPRNN"), epochs=250)
+    test_model(TasNet(module="GC_DPTNet"), epochs=250)
+    test_model(TasNet(module="GC_SudoRMRF"), epochs=250)
 
     print("\n\nCPU Results")
 
-    test_model(TDANet(), device="cpu")
-    test_model(AFRCNN(), device="cpu")
-    test_model(Sepformer(), device="cpu")
-    test_model(ConvTasNet(), device="cpu")
-    test_model(Sandglasset(), device="cpu")
-    test_model(DPRNNTasNet(), device="cpu")
+    # test_model(TDANet(), device="cpu")
+    # test_model(AFRCNN(), device="cpu")
+    # test_model(Sepformer(), device="cpu")
+    # test_model(ConvTasNet(), device="cpu")
+    # test_model(Sandglasset(), device="cpu")
+    # test_model(DPRNNTasNet(), device="cpu")
     test_model(TasNet(module="TCN"), device="cpu")
     test_model(TasNet(module="DPRNN"), device="cpu")
     test_model(TasNet(module="DPTNet"), device="cpu")
