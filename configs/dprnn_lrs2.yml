@@ -8,7 +8,6 @@ audionet:
     layer: 6
     block_size: 250
     num_spk: 2
-    bidirectional: True
     module: DPRNN
 
 # Loss config
