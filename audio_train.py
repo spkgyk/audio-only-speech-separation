@@ -109,7 +109,7 @@ def main(config):
 
     # Don't ask GPU if they are not available.
     gpus = config["training"]["gpus"] if torch.cuda.is_available() else None
-    distributed_backend = "ddp" if torch.cuda.is_available() else None
+    distributed_backend = "gpu" if torch.cuda.is_available() else None
 
     # default logger used by trainer
     logger_dir = os.path.join(os.getcwd(), "Experiments", "tensorboard_logs")

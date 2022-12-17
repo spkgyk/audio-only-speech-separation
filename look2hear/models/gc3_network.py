@@ -180,3 +180,7 @@ class TasNet(BaseModel):
             output = output.squeeze(0)
 
         return output
+
+    def get_model_args(self):
+        model_args = {"n_src": 2}
+        return model_args
