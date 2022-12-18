@@ -149,7 +149,7 @@ class TasNet(BaseModel):
             squeeze_frame = enc_feature.shape[-1]
 
         # sequence modeling
-        feature_output = self.seq_model(squeeze_mean).view(batch_size, -1, squeeze_frame)  # B, N, L
+        feature_output = self.seq_model(squeeze_mean).view(batch_size, -1, squeeze_frame)  # B, N, L if using context encoding, else B, N, T
 
         # context decoding
         if self.use_gc3:
