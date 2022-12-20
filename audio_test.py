@@ -27,14 +27,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--conf_dir", default="local/mixit_conf.yml", help="Full path to save best validation model")
-
-
-compute_metrics = ["si_sdr", "sdr"]
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
-
-
 def main(config):
     metricscolumn = MyMetricsTextColumn(style=RichProgressBarTheme.metrics)
     progress = Progress(
@@ -91,6 +83,14 @@ def main(config):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--conf_dir",
+        default=None,
+        type=str,
+        help="Path to model config dump file",
+    )
+
     args = parser.parse_args()
     arg_dic = dict(vars(args))
 
@@ -98,5 +98,4 @@ if __name__ == "__main__":
     with open(args.conf_dir, "rb") as f:
         train_conf = yaml.safe_load(f)
     arg_dic["train_conf"] = train_conf
-    # print(arg_dic)
     main(arg_dic)
