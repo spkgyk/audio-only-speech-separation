@@ -41,7 +41,7 @@ class TasNet(BaseModel):
         self.context_size = context_size
 
         self.group_size = group_size
-        self.win = int(sample_rate * win / 1000)
+        self.win = win  # int(sample_rate * win / 1000)
         self.stride = self.win // 2
         self.model_name = module
         self.use_gc3 = "GC_" in self.model_name
@@ -99,24 +99,10 @@ class TasNet(BaseModel):
         # output decoder
         self.decoder = nn.ConvTranspose1d(self.enc_dim, 1, self.win, bias=False, stride=self.stride)
 
-    def pad_input(self, input, window):
+    def pad_input(self, input):
         """
         Zero-padding input according to window/stride size.
         """
-        batch_size, nsample = input.shape
-        stride = window // 2
-
-        # pad the signals at the end for matching the window/stride size
-        rest = window - (stride + nsample % window) % window
-        if rest > 0:
-            pad = torch.zeros(batch_size, rest).type(input.type())
-            input = torch.cat([input, pad], 1)
-        pad_aux = torch.zeros(batch_size, stride).type(input.type())
-        input = torch.cat([pad_aux, input, pad_aux], 1)
-
-        return input, rest
-
-    def forward(self, input):
         was_one_d = False
         if input.ndim == 1:
             was_one_d = True
@@ -126,8 +112,22 @@ class TasNet(BaseModel):
         if input.ndim == 3:
             input = input.squeeze(1)
 
+        batch_size, nsample = input.shape
+
+        # pad the signals at the end for matching the window/stride size
+        rest = self.win - (self.stride + nsample % self.win) % self.win
+        if rest > 0:
+            pad = torch.zeros(batch_size, rest).type(input.type())
+            input = torch.cat([input, pad], 1)
+        pad_aux = torch.zeros(batch_size, self.stride).type(input.type())
+        input = torch.cat([pad_aux, input, pad_aux], 1)
+
+        return input, rest, was_one_d
+
+    def forward(self, input):
+
         # padding
-        output, rest = self.pad_input(input, self.win)
+        output, rest, was_one_d = self.pad_input(input)
         batch_size = output.size(0)
 
         # waveform encoder

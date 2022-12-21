@@ -149,7 +149,7 @@ def main(config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--conf_dir", default=None, help="Path to the training config file", required=True)
+    parser.add_argument("--conf-dir", default=None, help="Path to the training config file", required=True)
     args = parser.parse_args()
 
     # Load config file

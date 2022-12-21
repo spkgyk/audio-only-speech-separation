@@ -85,7 +85,7 @@ def main(config):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--conf_dir",
+        "--conf-dir",
         default=None,
         type=str,
         help="Path to model config dump file",
