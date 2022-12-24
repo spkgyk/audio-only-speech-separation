@@ -139,7 +139,6 @@ DataPreProcess/**/LRS33SPK
 clear.py
 Experiments/**/
 *.pyc
-*.sh
 *.DS_Store
 *.out
 *.json
