@@ -4,9 +4,9 @@ audionet:
   audionet_config:
     enc_dim: 64
     hidden_dim: 128
-    win: 2
+    win: 16
     layer: 6
-    block_size: 250
+    block_size: 100
     num_spk: 2
     module: Unfolded_DPRNN
 
