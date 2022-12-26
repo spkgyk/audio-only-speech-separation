@@ -369,21 +369,38 @@ class UConvBlock(nn.Module):
 
 
 class Recurrent(nn.Module):
-    def __init__(self, out_channels=128, in_channels=512, upsampling_depth=4, _iter=4):
+    def __init__(self, out_channels=128, in_channels=512, upsampling_depth=4, _iter=4, unfold=True):
         super().__init__()
-        self.unet = UConvBlock(out_channels, in_channels, upsampling_depth)
+
         self.iter = _iter
-        # self.attention = Attention_block(out_channels)
-        self.concat_block = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1, 1, groups=out_channels), nn.PReLU())
+        self.unfold = unfold
+
+        if unfold:
+            self.unet = UConvBlock(out_channels, in_channels, upsampling_depth)
+            self.concat_block = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1, 1, groups=out_channels), nn.PReLU())
+        else:
+            self.unet = nn.ModuleList([])
+            self.concat_block = nn.ModuleList([])
+            for i in range(self.iter):
+                self.unet.append(UConvBlock(out_channels, in_channels, upsampling_depth))
+                if i != 0:
+                    self.concat_block.append(nn.Sequential(nn.Conv1d(out_channels, out_channels, 1, 1, groups=out_channels), nn.PReLU()))
 
     def forward(self, x):
         mixture = x.clone()
-        for i in range(self.iter):
-            if i == 0:
-                x = self.unet(x)
-            else:
-                # m = self.attention(mixture, x)
-                x = self.unet(self.concat_block(mixture + x))
+        if self.unfold:
+            for i in range(self.iter):
+                if i == 0:
+                    x = self.unet(x)
+                else:
+                    x = self.unet(self.concat_block(mixture + x))
+        else:
+            for i in range(self.iter):
+                if i == 0:
+                    x = self.unet[i](x)
+                else:
+                    x = self.unet[i](self.concat_block[i - 1](mixture + x))
+
         return x
 
 
@@ -397,6 +414,7 @@ class TDANet(BaseModel):
         enc_kernel_size=21,
         num_sources=2,
         sample_rate=16000,
+        unfold=True,
     ):
         super(TDANet, self).__init__(sample_rate=sample_rate)
 
@@ -431,7 +449,7 @@ class TDANet(BaseModel):
         self.bottleneck = nn.Conv1d(in_channels=self.enc_num_basis, out_channels=out_channels, kernel_size=1)
 
         # Separation module
-        self.sm = Recurrent(out_channels, in_channels, upsampling_depth, num_blocks)
+        self.sm = Recurrent(out_channels, in_channels, upsampling_depth, num_blocks, unfold)
 
         mask_conv = nn.Conv1d(out_channels, num_sources * self.enc_num_basis, 1)
         self.mask_net = nn.Sequential(nn.PReLU(), mask_conv)
