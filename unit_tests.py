@@ -2,7 +2,7 @@ import torch
 
 from tqdm import trange
 from time import time
-from look2hear.models import TDANet, AFRCNN, TasNet, Sepformer, ConvTasNet, DPRNNTasNet, Sandglasset
+from look2hear.models import TDANet, AFRCNN, TasNet, Sepformer, ConvTasNet, DPRNNTasNet, Sandglasset, BSRNN
 from look2hear.losses import PITLossWrapper, pairwise_neg_snr
 from look2hear.system import make_optimizer
 from ptflops import get_model_complexity_info
@@ -51,11 +51,14 @@ def test_model(
 
 if __name__ == "__main__":
 
-    test_model(TDANet(), batch_size=4, length=32000, dry=True)
+    test_model(TDANet(), dry=True)
     # test_model(TDANet(), batch_size=4, length=32000, device="cpu", dry=True)
 
     print("\nGPU Results")
 
+    test_model(BSRNN(sample_rate=44100))
+    test_model(BSRNN(sample_rate=16000))
+    test_model(BSRNN(sample_rate=8000))
     test_model(TasNet(module="DPTNet"), epochs=250)
     test_model(TasNet(module="Unfolded_DPTNet"), epochs=250)
     test_model(TasNet(module="GC_DPTNet"), epochs=250)

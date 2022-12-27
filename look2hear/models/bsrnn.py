@@ -6,7 +6,7 @@
 import torch
 import torch.nn as nn
 
-from numpy import floor
+from numpy import floor, ceil
 from .utils import BaseModel
 
 
@@ -66,8 +66,9 @@ class BSRNN(BaseModel):
         win=2048,
         stride=512,
         feature_dim=128,
+        num_spks=2,
         num_layer=1,
-        num_repeat=12,
+        num_repeat=6,
         context=0,
         dropout=0.0,
         bi_comm=True,
@@ -75,7 +76,10 @@ class BSRNN(BaseModel):
     ):
         super(BSRNN, self).__init__(sample_rate=sample_rate)
 
+        self.model_name = "BSRNN"
+
         self.sr = sample_rate
+        self.num_spks = num_spks
         self.win = win
         self.stride = stride
         self.group = self.win // 2
@@ -88,19 +92,41 @@ class BSRNN(BaseModel):
         # split v7
         # 0-1k (100 hop), 1k-4k (250 hop), 4k-8k (500 hop), 8k-16k (1k hop), 16k-20k (2k hop), 20k-inf
         bandwidth_100 = int(floor(100 / (sample_rate / 2.0) * self.enc_dim))
-        bandwidth_250 = int(floor(250 / (sample_rate / 2.0) * self.enc_dim))
-        bandwidth_500 = int(floor(500 / (sample_rate / 2.0) * self.enc_dim))
-        bandwidth_1k = int(floor(1000 / (sample_rate / 2.0) * self.enc_dim))
-        bandwidth_2k = int(floor(2000 / (sample_rate / 2.0) * self.enc_dim))
-        self.band_width = [bandwidth_100] * 10
-        self.band_width += [bandwidth_250] * 12
-        self.band_width += [bandwidth_500] * 8
-        self.band_width += [bandwidth_1k] * 8
-        self.band_width += [bandwidth_2k] * 2
-        self.band_width.append(self.enc_dim - sum(self.band_width))
-        self.nband = len(self.band_width)
+        multiplier = int(ceil(10 / 44100 * self.sr))
+        self.band_width = [bandwidth_100] * multiplier
         print(self.band_width)
 
+        bandwidth_250 = int(floor(250 / (sample_rate / 2.0) * self.enc_dim))
+        multiplier = int(ceil(12 / 44100 * self.sr))
+        if sum(self.band_width + [bandwidth_250] * multiplier) < self.enc_dim:
+            self.band_width += [bandwidth_250] * multiplier
+        print(self.band_width)
+
+        bandwidth_500 = int(floor(500 / (sample_rate / 2.0) * self.enc_dim))
+        multiplier = int(ceil(8 / 44100 * self.sr))
+        if sum(self.band_width + [bandwidth_500] * multiplier) < self.enc_dim:
+            self.band_width += [bandwidth_500] * multiplier
+        print(self.band_width)
+
+        if self.sr > 8000:
+            bandwidth_1k = int(floor(1000 / (sample_rate / 2.0) * self.enc_dim))
+            multiplier = int(ceil(8 / 44100 * self.sr))
+            if sum(self.band_width + [bandwidth_1k] * multiplier) < self.enc_dim:
+                self.band_width += [bandwidth_1k] * multiplier
+        print(self.band_width)
+
+        if self.sr > 16000:
+            bandwidth_2k = int(floor(2000 / (sample_rate / 2.0) * self.enc_dim))
+            multiplier = int(ceil(2 / 44100 * self.sr))
+            if sum(self.band_width + [bandwidth_2k] * multiplier) < self.enc_dim:
+                self.band_width += [bandwidth_2k] * multiplier
+        print(self.band_width)
+
+        self.band_width.append(self.enc_dim - sum(self.band_width))
+        print(self.band_width)
+        self.nband = len(self.band_width)
+
+        assert self.band_width[-1] > 0, f"{self.enc_dim}, {sum(self.band_width)}"
         self.BN = nn.ModuleList([])
         for i in range(self.nband):
             self.BN.append(
@@ -122,6 +148,8 @@ class BSRNN(BaseModel):
                     nn.Conv1d(self.feature_dim * 4, self.feature_dim * 4, 1),
                     nn.Tanh(),
                     nn.Conv1d(self.feature_dim * 4, self.band_width[i] * self.ratio * 4, 1),
+                    nn.PReLU(),
+                    nn.Conv1d(self.band_width[i] * self.ratio * 4, self.num_spks * self.band_width[i] * self.ratio * 4, 1),
                 )
             )
 
@@ -143,6 +171,14 @@ class BSRNN(BaseModel):
 
     def forward(self, input):
         # input shape: (B, C, T)
+
+        input_ndim = len(input.shape)
+        if input.ndim == 1:
+            input = input.unsqueeze(0).unsqueeze(0)
+        if input.ndim == 2:
+            input = input.unsqueeze(1)
+        if input.ndim == 3:
+            input = input
 
         batch_size, nch, nsample = input.shape
         input = input.view(batch_size * nch, -1)
@@ -191,28 +227,33 @@ class BSRNN(BaseModel):
 
         sep_subband_spec = []
         for i in range(len(self.band_width)):
-            this_output = self.mask[i](sep_output[:, i]).view(batch_size * nch, 2, 2, self.ratio, self.band_width[i], -1)
-            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B*nch, 2, K, BW, T
-            this_mask_real = this_mask[:, 0]  # B*nch, K, BW, T
-            this_mask_imag = this_mask[:, 1]  # B*nch, K, BW, T
-            est_spec_real = (subband_spec_context[i].real * this_mask_real).mean(1) - (subband_spec_context[i].imag * this_mask_imag).mean(
-                1
-            )  # B*nch, BW, T
-            est_spec_imag = (subband_spec_context[i].real * this_mask_imag).mean(1) + (subband_spec_context[i].imag * this_mask_real).mean(
-                1
-            )  # B*nch, BW, T
+            this_output = self.mask[i](sep_output[:, i]).view(batch_size * nch, 2, 2, self.num_spks, self.ratio, self.band_width[i], -1)
+            this_mask = this_output[:, 0] * torch.sigmoid(this_output[:, 1])  # B*nch, 2, num_spks, K, BW, T
+            this_mask_real = this_mask[:, 0]  # B*nch, num_spks, K, BW, T
+            this_mask_imag = this_mask[:, 1]  # B*nch, num_spks, K, BW, T
+            est_spec_real = (subband_spec_context[i].real.unsqueeze(1) * this_mask_real).mean(2) - (
+                subband_spec_context[i].imag.unsqueeze(1) * this_mask_imag
+            ).mean(2)
+            est_spec_imag = (subband_spec_context[i].real.unsqueeze(1) * this_mask_imag).mean(2) + (
+                subband_spec_context[i].imag.unsqueeze(1) * this_mask_real
+            ).mean(2)
             sep_subband_spec.append(torch.complex(est_spec_real, est_spec_imag))
-        est_spec = torch.cat(sep_subband_spec, 1)  # B*nch, F, T
+        est_spec = torch.cat(sep_subband_spec, 2)  # B*nch, num_spks, F, T
 
         output = torch.istft(
-            est_spec.view(batch_size * nch, self.enc_dim, -1),
+            est_spec.view(batch_size * nch * self.num_spks, self.enc_dim, -1),
             n_fft=self.win,
             hop_length=self.stride,
             window=torch.hann_window(self.win).to(input.device).type(input.type()),
             length=nsample,
         )
 
-        output = output.view(batch_size, nch, -1)
+        output = output.view(batch_size, nch, self.num_spks, -1)
+
+        if input_ndim == 1:
+            output = output.squeeze(0).squeeze(0)
+        elif input_ndim == 2:
+            output = output.squeeze(1)
 
         return output
 

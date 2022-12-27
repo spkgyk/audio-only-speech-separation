@@ -9,7 +9,7 @@ class TasNet(BaseModel):
         self,
         enc_dim=64,
         hidden_dim=128,
-        win=2,
+        win=16,
         layer=6,
         num_spk=2,
         module="DPRNN",

@@ -4,8 +4,9 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-09-15 11:32:37
 ###
-from .TDANet import TDANet
+from .bsrnn import BSRNN
 from .afrcnn import AFRCNN
+from .tdanet import TDANet
 from .gc3_network import TasNet
 from .sepformer import Sepformer
 from .convtasnet import ConvTasNet
@@ -14,6 +15,7 @@ from .sandglasset import Sandglasset
 
 
 __all__ = [
+    "BSRNN",
     "TDANet",
     "AFRCNN",
     "TasNet",
