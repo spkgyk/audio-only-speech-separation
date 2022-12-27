@@ -17,7 +17,7 @@ loss:
     sdr_type: pairwise_neg_snr
     config:
       pit_from: pw_mtx
-      threshold_byloss: true
+      threshold_byloss: false
   val:
     loss_func: PITLossWrapper
     sdr_type: pairwise_neg_sisdr
