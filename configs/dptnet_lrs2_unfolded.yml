@@ -62,7 +62,7 @@ datamodule:
     fps: 25
     segment: 2.0
     normalize_audio: false
-    batch_size: 1
+    batch_size: 2
     num_workers: 8
     pin_memory: true
     persistent_workers: false
