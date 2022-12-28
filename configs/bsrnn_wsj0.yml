@@ -1,14 +1,16 @@
 # Network config
 audionet:
-  audionet_name: TasNet
+  audionet_name: BSRNN
   audionet_config:
-    enc_dim: 64
-    hidden_dim: 128
-    win: 16
-    layer: 6
-    block_size: 100
-    num_spk: 2
-    module: DPTNet
+    win: 256
+    stride: 64
+    feature_dim: 128
+    num_spks: 2
+    num_layer: 2
+    num_repeat: 12
+    context: 0
+    dropout: 0.0
+    bi_comm: true
 
 # Loss config
 loss:

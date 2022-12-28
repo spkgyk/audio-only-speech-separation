@@ -153,22 +153,6 @@ class BSRNN(BaseModel):
                 )
             )
 
-    def pad_input(self, input, window, stride):
-        """
-        Zero-padding input according to window/stride size.
-        """
-        batch_size, nsample = input.shape
-
-        # pad the signals at the end for matching the window/stride size
-        rest = window - (stride + nsample % window) % window
-        if rest > 0:
-            pad = torch.zeros(batch_size, rest).type(input.type())
-            input = torch.cat([input, pad], 1)
-        pad_aux = torch.zeros(batch_size, stride).type(input.type())
-        input = torch.cat([pad_aux, input, pad_aux], 1)
-
-        return input, rest
-
     def forward(self, input):
         # input shape: (B, C, T)
 
@@ -188,8 +172,8 @@ class BSRNN(BaseModel):
             input,
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win).to(input.device).type(input.type()),
-            return_complex=True,
+            window=torch.hann_window(self.win).type(input.type()),
+            return_complex=True
         )
 
         # get a context
@@ -244,7 +228,7 @@ class BSRNN(BaseModel):
             est_spec.view(batch_size * nch * self.num_spks, self.enc_dim, -1),
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win).to(input.device).type(input.type()),
+            window=torch.hann_window(self.win).type(input.type()),
             length=nsample,
         )
 
