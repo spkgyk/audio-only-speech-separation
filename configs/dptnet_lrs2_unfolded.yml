@@ -3,6 +3,7 @@ audionet:
   audionet_name: TasNet
   audionet_config:
     enc_dim: 64
+    bn_dim: 64
     hidden_dim: 128
     win: 16
     layer: 6

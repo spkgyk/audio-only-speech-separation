@@ -94,36 +94,30 @@ class BSRNN(BaseModel):
         bandwidth_100 = int(floor(100 / (sample_rate / 2.0) * self.enc_dim))
         multiplier = int(ceil(10 / 44100 * self.sr))
         self.band_width = [bandwidth_100] * multiplier
-        print(self.band_width)
 
         bandwidth_250 = int(floor(250 / (sample_rate / 2.0) * self.enc_dim))
         multiplier = int(ceil(12 / 44100 * self.sr))
         if sum(self.band_width + [bandwidth_250] * multiplier) < self.enc_dim:
             self.band_width += [bandwidth_250] * multiplier
-        print(self.band_width)
 
         bandwidth_500 = int(floor(500 / (sample_rate / 2.0) * self.enc_dim))
         multiplier = int(ceil(8 / 44100 * self.sr))
         if sum(self.band_width + [bandwidth_500] * multiplier) < self.enc_dim:
             self.band_width += [bandwidth_500] * multiplier
-        print(self.band_width)
 
         if self.sr > 8000:
             bandwidth_1k = int(floor(1000 / (sample_rate / 2.0) * self.enc_dim))
             multiplier = int(ceil(8 / 44100 * self.sr))
             if sum(self.band_width + [bandwidth_1k] * multiplier) < self.enc_dim:
                 self.band_width += [bandwidth_1k] * multiplier
-        print(self.band_width)
 
         if self.sr > 16000:
             bandwidth_2k = int(floor(2000 / (sample_rate / 2.0) * self.enc_dim))
             multiplier = int(ceil(2 / 44100 * self.sr))
             if sum(self.band_width + [bandwidth_2k] * multiplier) < self.enc_dim:
                 self.band_width += [bandwidth_2k] * multiplier
-        print(self.band_width)
 
         self.band_width.append(self.enc_dim - sum(self.band_width))
-        print(self.band_width)
         self.nband = len(self.band_width)
 
         assert self.band_width[-1] > 0, f"{self.enc_dim}, {sum(self.band_width)}"
@@ -173,7 +167,7 @@ class BSRNN(BaseModel):
             n_fft=self.win,
             hop_length=self.stride,
             window=torch.hann_window(self.win).type(input.type()),
-            return_complex=True
+            return_complex=True,
         )
 
         # get a context

@@ -8,6 +8,7 @@ class TasNet(BaseModel):
     def __init__(
         self,
         enc_dim=64,
+        bn_dim=64,
         hidden_dim=128,
         win=16,
         layer=6,
@@ -37,6 +38,7 @@ class TasNet(BaseModel):
         self.num_spk = num_spk
 
         self.enc_dim = enc_dim
+        self.bn_dim = bn_dim
         self.hidden_dim = hidden_dim
         self.context_size = context_size
 
@@ -50,19 +52,25 @@ class TasNet(BaseModel):
 
         # input encoder
         self.encoder = nn.Conv1d(1, self.enc_dim, self.win, bias=False, stride=self.stride)
-        self.norm = nn.GroupNorm(1, self.enc_dim)
+        torch.nn.init.xavier_uniform_(self.encoder.weight)
+
+        # bottleneck
+        self.bottleneck = nn.Sequential(
+            nn.GroupNorm(1, self.enc_dim, eps=torch.finfo(torch.float32).eps),
+            nn.Conv1d(self.enc_dim, self.bn_dim, 1, bias=False),
+        )
 
         # context encoder/decoder
         if self.use_gc3:
-            self.context_enc = GC_RNN(self.enc_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
-            self.context_dec = GC_RNN(self.enc_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
+            self.context_enc = GC_RNN(self.bn_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
+            self.context_dec = GC_RNN(self.bn_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
 
         # sequence modeling
         if self.model_name in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet", "Unfolded_DPRNN", "Unfolded_DPTNet"]:
             self.seq_model = DP_Wrapper(
-                self.enc_dim,
+                self.bn_dim,
                 self.hidden_dim,
-                self.enc_dim,
+                self.bn_dim,
                 num_spk=1,
                 num_group=self.group_size,
                 layer=layer,
@@ -71,9 +79,9 @@ class TasNet(BaseModel):
             )
         elif self.model_name in ["TCN", "GC_TCN"]:
             self.seq_model = TCN_Wrapper(
-                self.enc_dim,
-                self.enc_dim,
-                self.enc_dim * 4,
+                self.bn_dim,
+                self.bn_dim,
+                self.bn_dim * 4,
                 layer=layer,
                 stack=2,
                 module=self.model_name,
@@ -83,7 +91,7 @@ class TasNet(BaseModel):
             )
         elif self.model_name in ["GC_SudoRMRF", "SudoRMRF"]:
             self.seq_model = SudoRMRF_Wrapper(
-                out_channels=self.enc_dim,
+                out_channels=self.bn_dim,
                 in_channels=self.hidden_dim * 2,
                 upsampling_depth=5,
                 layer=layer,
@@ -93,11 +101,13 @@ class TasNet(BaseModel):
 
         # mask estimation layer
         self.mask = nn.Sequential(
-            nn.Conv1d(self.enc_dim // self.group_size, self.enc_dim * self.num_spk // self.group_size, 1), nn.ReLU(inplace=True)
+            nn.Conv1d(self.bn_dim // self.group_size, self.enc_dim * self.num_spk // self.group_size, 1),
+            nn.ReLU(inplace=True),
         )
 
         # output decoder
         self.decoder = nn.ConvTranspose1d(self.enc_dim, 1, self.win, bias=False, stride=self.stride)
+        torch.nn.init.xavier_uniform_(self.decoder.weight)
 
     def pad_input(self, input):
         """
@@ -133,35 +143,31 @@ class TasNet(BaseModel):
         # waveform encoder
         enc_output = self.encoder(output.unsqueeze(1))  # B, N, T
         seq_len = enc_output.shape[-1]
-        enc_feature = self.norm(enc_output)
+        enc_feature = self.bottleneck(enc_output)
 
         # context encoding
         if self.use_gc3:
             squeeze_block, squeeze_rest = split_feature(enc_feature, self.context_size)  # B, N, context, L
             squeeze_frame = squeeze_block.shape[-1]
-            squeeze_input = (
-                squeeze_block.permute(0, 3, 1, 2).contiguous().view(batch_size * squeeze_frame, self.enc_dim, self.context_size)
-            )  # B*L, N, context
+            squeeze_input = squeeze_block.permute(0, 3, 1, 2).contiguous().view(batch_size * squeeze_frame, self.bn_dim, self.context_size)
             squeeze_output = self.context_enc(squeeze_input)  # B*L, N, context
-            squeeze_mean = squeeze_output.mean(2).view(batch_size, squeeze_frame, self.enc_dim).transpose(1, 2).contiguous()  # B, N, L
+            squeeze_mean = squeeze_output.mean(2).view(batch_size, squeeze_frame, self.bn_dim).transpose(1, 2).contiguous()  # B, N, L
         else:
             squeeze_mean = enc_feature
             squeeze_frame = enc_feature.shape[-1]
 
         # sequence modeling
-        feature_output = self.seq_model(squeeze_mean).view(batch_size, -1, squeeze_frame)  # B, N, L if using context encoding, else B, N, T
+        feature_map = self.seq_model(squeeze_mean).view(batch_size, -1, squeeze_frame)  # B, N, L if using context encoding, else B, N, T
 
         # context decoding
         if self.use_gc3:
-            feature_output = feature_output.unsqueeze(2) + squeeze_block  # B, N, context, L
-            feature_output = (
-                feature_output.permute(0, 3, 1, 2).contiguous().view(batch_size * squeeze_frame, self.enc_dim, self.context_size)
-            )  # B*L, N, context
-            unsqueeze_output = self.context_dec(feature_output).view(batch_size, squeeze_frame, self.enc_dim, -1)  # B, L, N, context
+            feature_map = feature_map.unsqueeze(2) + squeeze_block  # B, N, context, L
+            feature_map = feature_map.permute(0, 3, 1, 2).contiguous().view(batch_size * squeeze_frame, self.bn_dim, self.context_size)
+            unsqueeze_output = self.context_dec(feature_map).view(batch_size, squeeze_frame, self.bn_dim, -1)  # B, L, N, context
             unsqueeze_output = unsqueeze_output.permute(0, 2, 3, 1).contiguous()  # B, N, context, L
             unsqueeze_output = merge_feature(unsqueeze_output, squeeze_rest)  # B, N, T
         else:
-            unsqueeze_output = feature_output
+            unsqueeze_output = feature_map
 
         # mask estimation
         unsqueeze_output = unsqueeze_output.view(batch_size * self.group_size, -1, unsqueeze_output.shape[-1])

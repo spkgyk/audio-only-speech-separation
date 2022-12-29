@@ -79,8 +79,6 @@ class DP_Wrapper(nn.Module):
         self.num_spk = num_spk
         self.num_group = num_group
 
-        self.eps = 1e-8
-
         if module == "DPRNN":
             self.seq_model = DPRNN(
                 self.input_dim,

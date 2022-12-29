@@ -7,7 +7,7 @@ audionet:
     feature_dim: 128
     num_spks: 2
     num_layer: 2
-    num_repeat: 12
+    num_repeat: 6
     context: 0
     dropout: 0.0
     bi_comm: true
