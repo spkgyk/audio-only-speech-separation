@@ -6,7 +6,7 @@ audionet:
     stride: 64
     feature_dim: 128
     num_spks: 2
-    num_layer: 2
+    num_layer: 1
     num_repeat: 6
     context: 0
     dropout: 0.0
@@ -71,4 +71,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: dptnet_baseline_wsj0_2mix_8gpu
+  exp_name: bsrnn_wsj0_2mix_8gpu

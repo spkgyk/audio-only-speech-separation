@@ -63,8 +63,8 @@ class BSNet(nn.Module):
 class BSRNN(BaseModel):
     def __init__(
         self,
-        win=2048,
-        stride=512,
+        win=256,
+        stride=64,
         feature_dim=128,
         num_spks=2,
         num_layer=1,
@@ -72,7 +72,7 @@ class BSRNN(BaseModel):
         context=0,
         dropout=0.0,
         bi_comm=True,
-        sample_rate=44100,
+        sample_rate=16000,
     ):
         super(BSRNN, self).__init__(sample_rate=sample_rate)
 
@@ -119,6 +119,8 @@ class BSRNN(BaseModel):
 
         self.band_width.append(self.enc_dim - sum(self.band_width))
         self.nband = len(self.band_width)
+
+        print(self.band_width)
 
         assert self.band_width[-1] > 0, f"{self.enc_dim}, {sum(self.band_width)}"
         self.BN = nn.ModuleList([])
