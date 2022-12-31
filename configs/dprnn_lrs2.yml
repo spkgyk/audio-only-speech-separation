@@ -29,7 +29,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [2,3,4,5]
+  gpus: [0,1,2,3]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -70,4 +70,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: dprnn_baseline_lrs2_2mix_4gpu
+  exp_name: dprnn_baseline_lrs2_2mix_4gpu_bn64
