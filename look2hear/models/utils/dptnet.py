@@ -11,68 +11,19 @@ import torch.nn.functional as F
 from torch.nn.modules.rnn import LSTM
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.dropout import Dropout
-from torch.nn.modules.container import ModuleList
 from torch.nn.modules.normalization import LayerNorm
 from torch.nn.modules.activation import MultiheadAttention
 
 from .gc3_basics import TAC
 
 
-class TransformerOptimizer(object):
-    """A simple wrapper class for learning rate scheduling"""
+def _get_activation_fn(activation):
+    if activation == "relu":
+        return F.relu
+    elif activation == "gelu":
+        return F.gelu
 
-    def __init__(self, optimizer, k, d_model, warmup_steps=4000):
-        self.optimizer = optimizer
-        self.k = k
-        self.init_lr = d_model ** (-0.5)
-        self.warmup_steps = warmup_steps
-        self.step_num = 0
-        self.epoch = 0
-        self.visdom_lr = None
-
-    def zero_grad(self):
-        self.optimizer.zero_grad()
-
-    def step(self, epoch):
-        self._update_lr(epoch)
-        # self._visdom()
-        self.optimizer.step()
-
-    def _update_lr(self, epoch):
-        self.step_num += 1
-        if self.step_num <= self.warmup_steps:
-            lr = self.k * self.init_lr * min(self.step_num ** (-0.5), self.step_num * (self.warmup_steps ** (-1.5)))
-        else:
-            lr = 0.0004 * (0.98 ** ((epoch - 1) // 2))
-
-        for param_group in self.optimizer.param_groups:
-            param_group["lr"] = lr
-
-    def load_state_dict(self, state_dict):
-        self.optimizer.load_state_dict(state_dict)
-
-    def state_dict(self):
-        return self.optimizer.state_dict()
-
-    def set_k(self, k):
-        self.k = k
-
-    def set_visdom(self, visdom_lr, vis):
-        self.visdom_lr = visdom_lr  # Turn on/off visdom of learning rate
-        self.vis = vis  # visdom enviroment
-        self.vis_opts = dict(title="Learning Rate", ylabel="Leanring Rate", xlabel="step")
-        self.vis_window = None
-        self.x_axis = torch.LongTensor()
-        self.y_axis = torch.FloatTensor()
-
-    def _visdom(self):
-        if self.visdom_lr is not None:
-            self.x_axis = torch.cat([self.x_axis, torch.LongTensor([self.step_num])])
-            self.y_axis = torch.cat([self.y_axis, torch.FloatTensor([self.optimizer.param_groups[0]["lr"]])])
-            if self.vis_window is None:
-                self.vis_window = self.vis.line(X=self.x_axis, Y=self.y_axis, opts=self.vis_opts)
-            else:
-                self.vis.line(X=self.x_axis, Y=self.y_axis, win=self.vis_window, update="replace")
+    raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
 
 
 class TransformerEncoderLayer(nn.Module):
@@ -135,19 +86,6 @@ class TransformerEncoderLayer(nn.Module):
         return src
 
 
-def _get_clones(module, N):
-    return ModuleList([copy.deepcopy(module) for i in range(N)])
-
-
-def _get_activation_fn(activation):
-    if activation == "relu":
-        return F.relu
-    elif activation == "gelu":
-        return F.gelu
-
-    raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
-
-
 class SingleTransformer(nn.Module):
     def __init__(self, input_size, dim_feedforward):
         super(SingleTransformer, self).__init__()
@@ -163,130 +101,66 @@ class SingleTransformer(nn.Module):
 
 # dual-path Transformer
 class DPTNet(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=1):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=1, num_group=16, unfold=False):
         super(DPTNet, self).__init__()
-
-        self.input_size = input_size
-        self.output_size = output_size
-        self.hidden_size = hidden_size
-
-        # dual-path Transformer
-        self.row_xfmr = nn.ModuleList([])
-        self.col_xfmr = nn.ModuleList([])
-        for i in range(num_layers):
-            self.row_xfmr.append(SingleTransformer(input_size=input_size, dim_feedforward=hidden_size))
-            self.col_xfmr.append(SingleTransformer(input_size=input_size, dim_feedforward=hidden_size))
-
-        self.output = nn.Conv2d(input_size, output_size, 1)
-
-    def forward(self, input):
-        # input shape: batch, N, dim1, dim2
-        # apply RNN on dim1 first and then dim2
-
-        batch_size, _, dim1, dim2 = input.shape
-        output = input
-        for i in range(len(self.row_xfmr)):
-            row_input = output.permute(0, 3, 2, 1).contiguous().view(batch_size * dim2, dim1, -1)  # B*dim2, dim1, N
-            row_output = self.row_xfmr[i](row_input)  # B*dim2, dim1, H
-            row_output = row_output.view(batch_size, dim2, dim1, -1).permute(0, 3, 2, 1).contiguous()  # B, N, dim1, dim2
-            output = output + row_output
-
-            col_input = output.permute(0, 2, 3, 1).contiguous().view(batch_size * dim1, dim2, -1)  # B*dim1, dim2, N
-            col_output = self.col_xfmr[i](col_input)  # B*dim1, dim2, H
-            col_output = col_output.view(batch_size, dim1, dim2, -1).permute(0, 3, 1, 2).contiguous()  # B, N, dim1, dim2
-            output = output + col_output
-
-        output = self.output(output)
-
-        return output
-
-
-# GroupComm-DPTNet
-class GC_DPTNet(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_group=16, num_layers=1):
-        super(GC_DPTNet, self).__init__()
 
         self.input_size = input_size
         self.output_size = output_size
         self.hidden_size = hidden_size
         self.num_group = num_group
         self.num_spk = output_size // input_size
+        self.unfold = unfold
 
         # dual-path Transformer
+        if self.num_group > 1:
+            self.TAC = nn.ModuleList([])
         self.row_xfmr = nn.ModuleList([])
         self.col_xfmr = nn.ModuleList([])
-        self.TAC = nn.ModuleList([])
+
+        if self.unfold:
+            row_xfmr = SingleTransformer(input_size // num_group, hidden_size // num_group)
+            col_xfmr = SingleTransformer(input_size // num_group, hidden_size // num_group)
+            self.concat_block = nn.Sequential(
+                nn.Conv2d(input_size // num_group, input_size // num_group, 1, 1, groups=input_size // num_group),
+                nn.PReLU(),
+            )
+
         for i in range(num_layers):
-            self.TAC.append(TAC(input_size // num_group, hidden_size * 3 // num_group))
-            self.row_xfmr.append(SingleTransformer(input_size=input_size // num_group, dim_feedforward=hidden_size // num_group))
-            self.col_xfmr.append(SingleTransformer(input_size=input_size // num_group, dim_feedforward=hidden_size // num_group))
+            if self.num_group > 1:
+                self.TAC.append(TAC(input_size // num_group, hidden_size * 3 // num_group))
+
+            self.row_xfmr.append(row_xfmr if self.unfold else SingleTransformer(input_size // num_group, hidden_size // num_group))
+            self.col_xfmr.append(col_xfmr if self.unfold else SingleTransformer(input_size // num_group, hidden_size // num_group))
 
         self.output = nn.Conv2d(input_size // num_group, output_size // num_group, 1)
 
     def forward(self, input):
         # input shape: batch, N, dim1, dim2
 
-        batch_size, N, dim1, dim2 = input.shape
+        batch_size, _, dim1, dim2 = input.shape
         output = input.view(batch_size, self.num_group, -1, dim1, dim2)
 
         for i in range(len(self.row_xfmr)):
 
             # GroupComm
-            output = self.TAC[i](output.view(batch_size, self.num_group, -1, dim1 * dim2))  # B, G, N/G, dim1*dim2
+            if self.num_group > 1:
+                output = self.TAC[i](output.view(batch_size, self.num_group, -1, dim1 * dim2))  # B, G, N/G, dim1*dim2
             output = output.view(batch_size * self.num_group, -1, dim1, dim2)  # B*G, N/G, dim1, dim2
 
+            # intra-block
             row_input = output.permute(0, 3, 2, 1).contiguous().view(batch_size * self.num_group * dim2, dim1, -1)  # B*G*dim2, dim1, N/G
             row_output = self.row_xfmr[i](row_input)  # B*G*dim2, dim1, H
             row_output = row_output.view(batch_size * self.num_group, dim2, dim1, -1).permute(0, 3, 2, 1).contiguous()  # B*G, N, dim1, dim2
             output = output + row_output
 
+            # inter-block
             col_input = output.permute(0, 2, 3, 1).contiguous().view(batch_size * self.num_group * dim1, dim2, -1)  # B*G*dim1, dim2, N
             col_output = self.col_xfmr[i](col_input)  # B*G*dim1, dim2, H
             col_output = col_output.view(batch_size * self.num_group, dim1, dim2, -1).permute(0, 3, 1, 2).contiguous()  # B*G, N, dim1, dim2
-            output = output + col_output
+            output = self.concat_block(output + col_output) if self.unfold else output + col_output
 
         output = output.view(batch_size * self.num_group, -1, dim1, dim2)
         output = self.output(output).view(batch_size, self.num_group, self.num_spk, -1, dim1, dim2)
         output = output.transpose(1, 2).contiguous()
-
-        return output
-
-
-# dual-path Transformer
-class Unfolded_DPTNet(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers=1):
-        super(Unfolded_DPTNet, self).__init__()
-
-        self.input_size = input_size
-        self.output_size = output_size
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-
-        # dual-path Transformer
-        self.row_xfmr = SingleTransformer(input_size=input_size, dim_feedforward=hidden_size)
-        self.col_xfmr = SingleTransformer(input_size=input_size, dim_feedforward=hidden_size)
-
-        self.concat_block = nn.Sequential(nn.Conv2d(input_size, input_size, 1, 1, groups=input_size), nn.PReLU())
-
-        self.output = nn.Conv2d(input_size, output_size, 1)
-
-    def forward(self, input):
-        # input shape: batch, N, dim1, dim2
-        # apply RNN on dim1 first and then dim2
-
-        batch_size, _, dim1, dim2 = input.shape
-        output = input
-        for i in range(self.num_layers):
-            row_input = output.permute(0, 3, 2, 1).contiguous().view(batch_size * dim2, dim1, -1)  # B*dim2, dim1, N
-            row_output = self.row_xfmr(row_input)  # B*dim2, dim1, H
-            row_output = row_output.view(batch_size, dim2, dim1, -1).permute(0, 3, 2, 1).contiguous()  # B, N, dim1, dim2
-            output = output + row_output
-
-            col_input = output.permute(0, 2, 3, 1).contiguous().view(batch_size * dim1, dim2, -1)  # B*dim1, dim2, N
-            col_output = self.col_xfmr(col_input)  # B*dim1, dim2, H
-            col_output = col_output.view(batch_size, dim1, dim2, -1).permute(0, 3, 1, 2).contiguous()  # B, N, dim1, dim2
-            output = self.concat_block(output + col_output)
-
-        output = self.output(output)
 
         return output

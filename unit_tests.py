@@ -49,49 +49,57 @@ if __name__ == "__main__":
 
     print("\nGPU Results")
 
-    test_model(BSRNN(sample_rate=8000, win=256, stride=64), epochs=50)
-    test_model(BSRNN(sample_rate=16000, win=512, stride=128), epochs=50)
-    test_model(BSRNN(sample_rate=44100, win=1024, stride=256), epochs=50)
+    # test_model(BSRNN(sample_rate=8000, win=256, stride=64), epochs=50)
+    # test_model(BSRNN(sample_rate=16000, win=512, stride=128), epochs=50)
+    # test_model(BSRNN(sample_rate=44100, win=1024, stride=256), epochs=50)
+    # print()
+
+    # test_model(TasNet(module="DPTNet", enc_dim=256, bn_dim=64), epochs=50)
+    test_model(TasNet(module="DPTNet", enc_dim=64, bn_dim=64), epochs=50)
     print()
 
-    test_model(TasNet(module="DPTNet", enc_dim=256, bn_dim=64), epochs=50)
-    test_model(TasNet(module="DPTNet", enc_dim=64, bn_dim=64), epochs=50)
+    # test_model(TasNet(module="DPTNet", enc_dim=256, bn_dim=64, unfold=True), epochs=50)
+    test_model(TasNet(module="DPTNet", enc_dim=64, bn_dim=64, unfold=True), epochs=50)
+    print()
+
+    # test_model(TasNet(module="DPTNet", enc_dim=256, bn_dim=64, group_size=16), epochs=50)
+    test_model(TasNet(module="DPTNet", enc_dim=64, bn_dim=64, group_size=16), epochs=50)
+    print()
+
+    # test_model(TasNet(module="DPTNet", enc_dim=256, bn_dim=64, group_size=16, unfold=True), epochs=50)
+    test_model(TasNet(module="DPTNet", enc_dim=64, bn_dim=64, group_size=16, unfold=True), epochs=50)
+    print()
+
+    # test_model(TasNet(module="DPRNN", enc_dim=256, bn_dim=64), epochs=50)
+    test_model(TasNet(module="DPRNN", enc_dim=64, bn_dim=64), epochs=50)
+    print()
+
+    # test_model(TasNet(module="DPRNN", enc_dim=256, bn_dim=64, unfold=True), epochs=50)
+    test_model(TasNet(module="DPRNN", enc_dim=64, bn_dim=64, unfold=True), epochs=50)
+    print()
+
+    # test_model(TasNet(module="DPRNN", enc_dim=256, bn_dim=64, group_size=16), epochs=50)
+    test_model(TasNet(module="DPRNN", enc_dim=64, bn_dim=64, group_size=16), epochs=50)
+    print()
+
+    # test_model(TasNet(module="DPRNN", enc_dim=256, bn_dim=64, group_size=16, unfold=True), epochs=50)
+    test_model(TasNet(module="DPRNN", enc_dim=64, bn_dim=64, group_size=16, unfold=True), epochs=50)
+    print()
+
+    # test_model(TasNet(module="TCN", enc_dim=256, bn_dim=64), epochs=50)
+    # test_model(TasNet(module="TCN", enc_dim=64, bn_dim=64), epochs=50)
     # print()
 
-    # test_model(TasNet(module="Unfolded_DPTNet", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="Unfolded_DPTNet", enc_dim=64, bn_dim=64), epochs=100)
+    # test_model(TasNet(module="GC_TCN", enc_dim=256, bn_dim=64), epochs=50)
+    # test_model(TasNet(module="GC_TCN", enc_dim=64, bn_dim=64), epochs=50)
     # print()
 
-    # test_model(TasNet(module="GC_DPTNet", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="GC_DPTNet", enc_dim=64, bn_dim=64), epochs=100)
+    # test_model(TasNet(module="SudoRMRF", enc_dim=256, bn_dim=64), epochs=50)
+    # test_model(TasNet(module="SudoRMRF", enc_dim=64, bn_dim=64), epochs=50)
     # print()
 
-    # test_model(TasNet(module="DPRNN", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="DPRNN", enc_dim=64, bn_dim=64), epochs=100)
-    # print()
-
-    # test_model(TasNet(module="Unfolded_DPRNN", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="Unfolded_DPRNN", enc_dim=64, bn_dim=64), epochs=100)
-    # print()
-
-    # test_model(TasNet(module="GC_DPRNN", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="GC_DPRNN", enc_dim=64, bn_dim=64), epochs=100)
-    # print()
-
-    # test_model(TasNet(module="TCN", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="TCN", enc_dim=64, bn_dim=64), epochs=100)
-    # print()
-
-    # test_model(TasNet(module="GC_TCN", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="GC_TCN", enc_dim=64, bn_dim=64), epochs=100)
-    # print()
-
-    # test_model(TasNet(module="SudoRMRF", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="SudoRMRF", enc_dim=64, bn_dim=64), epochs=100)
-    # print()
-
-    # test_model(TasNet(module="GC_SudoRMRF", enc_dim=256, bn_dim=64), epochs=100)
-    # test_model(TasNet(module="GC_SudoRMRF", enc_dim=64, bn_dim=64), epochs=100)
+    # test_model(TasNet(module="GC_SudoRMRF", enc_dim=256, bn_dim=64), epochs=50)
+    # test_model(TasNet(module="GC_SudoRMRF", enc_dim=64, bn_dim=64), epochs=50)
     # print()
 
     # test_model(TDANet())

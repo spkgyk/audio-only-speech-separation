@@ -15,23 +15,20 @@ class TasNet(BaseModel):
         num_spk=2,
         module="DPRNN",
         context_size=24,
-        group_size=16,
+        group_size=1,
         block_size=100,
         sample_rate=16000,
+        unfold=False,
     ):
         super(TasNet, self).__init__(sample_rate=sample_rate)
 
         assert module in [
             "DPRNN",
-            "GC_DPRNN",
             "DPTNet",
-            "GC_DPTNet",
-            "GC_TCN",
             "TCN",
-            "GC_SudoRMRF",
             "SudoRMRF",
-            "Unfolded_DPRNN",
-            "Unfolded_DPTNet",
+            "GC_TCN",
+            "GC_SudoRMRF",
         ]
 
         # hyper parameters
@@ -46,9 +43,7 @@ class TasNet(BaseModel):
         self.win = win  # int(sample_rate * win / 1000)
         self.stride = self.win // 2
         self.model_name = module
-        self.use_gc3 = "GC_" in self.model_name
-        if not self.use_gc3:
-            self.group_size = 1
+        self.unfold = unfold
 
         # input encoder
         self.encoder = nn.Conv1d(1, self.enc_dim, self.win, bias=False, stride=self.stride)
@@ -61,12 +56,12 @@ class TasNet(BaseModel):
         )
 
         # context encoder/decoder
-        if self.use_gc3:
+        if self.group_size > 1:
             self.context_enc = GC_RNN(self.bn_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
             self.context_dec = GC_RNN(self.bn_dim, self.hidden_dim, num_group=self.group_size, num_layers=2, bidirectional=True)
 
         # sequence modeling
-        if self.model_name in ["DPRNN", "GC_DPRNN", "DPTNet", "GC_DPTNet", "Unfolded_DPRNN", "Unfolded_DPTNet"]:
+        if self.model_name in ["DPRNN", "DPTNet"]:
             self.seq_model = DP_Wrapper(
                 self.bn_dim,
                 self.hidden_dim,
@@ -76,6 +71,7 @@ class TasNet(BaseModel):
                 layer=layer,
                 block_size=block_size,
                 module=self.model_name,
+                unfold=self.unfold,
             )
         elif self.model_name in ["TCN", "GC_TCN"]:
             self.seq_model = TCN_Wrapper(
@@ -146,7 +142,7 @@ class TasNet(BaseModel):
         enc_feature = self.bottleneck(enc_output)
 
         # context encoding
-        if self.use_gc3:
+        if self.group_size > 1:
             squeeze_block, squeeze_rest = split_feature(enc_feature, self.context_size)  # B, N, context, L
             squeeze_frame = squeeze_block.shape[-1]
             squeeze_input = squeeze_block.permute(0, 3, 1, 2).contiguous().view(batch_size * squeeze_frame, self.bn_dim, self.context_size)
@@ -160,7 +156,7 @@ class TasNet(BaseModel):
         feature_map = self.seq_model(squeeze_mean).view(batch_size, -1, squeeze_frame)  # B, N, L if using context encoding, else B, N, T
 
         # context decoding
-        if self.use_gc3:
+        if self.group_size > 1:
             feature_map = feature_map.unsqueeze(2) + squeeze_block  # B, N, context, L
             feature_map = feature_map.permute(0, 3, 1, 2).contiguous().view(batch_size * squeeze_frame, self.bn_dim, self.context_size)
             unsqueeze_output = self.context_dec(feature_map).view(batch_size, squeeze_frame, self.bn_dim, -1)  # B, L, N, context

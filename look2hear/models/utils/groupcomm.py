@@ -1,8 +1,8 @@
 import torch.nn as nn
 
 from .gc3_basics import TAC, ProjRNN, split_feature, merge_feature
-from .dptnet import DPTNet, GC_DPTNet, Unfolded_DPTNet
-from .dprnn import DPRNN, GC_DPRNN, Unfolded_DPRNN
+from .dptnet import DPTNet
+from .dprnn import DPRNN
 from .sudo_rm_rf import UConvBlock, GC_UConvBlock
 from .tcn import TCN, GC_TCN
 
@@ -58,6 +58,7 @@ class DP_Wrapper(nn.Module):
         block_size=100,
         bidirectional=True,
         module="RNN",
+        unfold=False,
     ):
         super(DP_Wrapper, self).__init__()
 
@@ -78,6 +79,7 @@ class DP_Wrapper(nn.Module):
         self.block_size = block_size
         self.num_spk = num_spk
         self.num_group = num_group
+        self.unfold = unfold
 
         if module == "DPRNN":
             self.seq_model = DPRNN(
@@ -85,24 +87,9 @@ class DP_Wrapper(nn.Module):
                 self.hidden_dim,
                 self.output_dim * self.num_spk,
                 num_layers=layer,
-                bidirectional=bidirectional,
-            )
-        elif module == "GC_DPRNN":
-            self.seq_model = GC_DPRNN(
-                self.input_dim,
-                self.hidden_dim,
-                self.output_dim * self.num_spk,
                 num_group=self.num_group,
-                num_layers=layer,
                 bidirectional=bidirectional,
-            )
-        elif module == "Unfolded_DPRNN":
-            self.seq_model = Unfolded_DPRNN(
-                self.input_dim,
-                self.hidden_dim,
-                self.output_dim * self.num_spk,
-                num_layers=layer,
-                bidirectional=bidirectional,
+                unfold=self.unfold,
             )
         elif module == "DPTNet":
             self.seq_model = DPTNet(
@@ -110,21 +97,8 @@ class DP_Wrapper(nn.Module):
                 self.hidden_dim,
                 self.output_dim * self.num_spk,
                 num_layers=layer,
-            )
-        elif module == "GC_DPTNet":
-            self.seq_model = GC_DPTNet(
-                self.input_dim,
-                self.hidden_dim,
-                self.output_dim * self.num_spk,
                 num_group=self.num_group,
-                num_layers=layer,
-            )
-        elif module == "Unfolded_DPTNet":
-            self.seq_model = Unfolded_DPTNet(
-                self.input_dim,
-                self.hidden_dim,
-                self.output_dim * self.num_spk,
-                num_layers=layer,
+                unfold=self.unfold,
             )
 
     def forward(self, input):
