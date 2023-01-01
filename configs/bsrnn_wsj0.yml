@@ -30,7 +30,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [4,5,6]
+  gpus: [4,5,6,7]
   parallel: ddp
   epochs: 500
   early_stop:
