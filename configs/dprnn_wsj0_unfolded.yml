@@ -1,13 +1,15 @@
 # Network config
 audionet:
-  audionet_name: EdgeFRCNNIterSumNOGFSA
+  audionet_name: TasNet
   audionet_config:
-    out_channels: 128
-    in_channels: 512
-    num_blocks: 16
-    upsampling_depth: 5
-    enc_kernel_size: 2 # ms
-    num_sources: 2
+    enc_dim: 64
+    bn_dim: 64
+    hidden_dim: 128
+    win: 16
+    layer: 6
+    block_size: 100
+    num_spk: 2
+    module: Unfolded_DPRNN
 
 # Loss config
 loss:
@@ -16,7 +18,7 @@ loss:
     sdr_type: pairwise_neg_snr
     config:
       pit_from: pw_mtx
-      threshold_byloss: true
+      threshold_byloss: false
   val:
     loss_func: PITLossWrapper
     sdr_type: pairwise_neg_sisdr
@@ -27,7 +29,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [3,4,5]
+  gpus: [0,1,2,3]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -53,19 +55,19 @@ scheduler:
 datamodule:
   data_name: LRS2DataModule
   data_config:
-    train_dir: DataPreProcess/WSJ0/tr
-    valid_dir: DataPreProcess/WSJ0/cv
-    test_dir: DataPreProcess/WSJ0/tt
+    train_dir: data-preprocess/WSJ0Audio/tr
+    valid_dir: data-preprocess/WSJ0Audio/cv
+    test_dir: data-preprocess/WSJ0Audio/tt
     n_src: 2
     sample_rate: 8000
     fps: 25
     segment: 4.0
     normalize_audio: false
-    batch_size: 1
-    num_workers: 6
+    batch_size: 2
+    num_workers: 8
     pin_memory: true
     persistent_workers: false
     audio_only: true
 
 exp:
-  exp_name: EdgeFRCNNIterSumNOGFSA-in_channels=512-WSJ0-win=2ms-batch=1-gpus=3-Noncausal
+  exp_name: dprnn_unfolded_wsj0_2mix_4gpu_bn64

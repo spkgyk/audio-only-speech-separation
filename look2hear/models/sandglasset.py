@@ -10,7 +10,7 @@ import inspect
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .base_model import BaseModel
+from .utils import BaseModel
 
 
 def has_arg(fn, name):
@@ -259,7 +259,7 @@ class Decoder(nn.Module):
         return result
 
 
-class Sandglasset2(BaseModel):
+class Sandglasset(BaseModel):
     def __init__(
         self,
         n_feats=64,
@@ -281,7 +281,7 @@ class Sandglasset2(BaseModel):
         kernel_size=2,
         sr=16000,
     ):
-        super(Sandglasset2, self).__init__(sample_rate=sr)
+        super(Sandglasset, self).__init__(sample_rate=sr)
         # encoder part
         self.encoder = nn.Conv1d(1, n_feats, kernel_size=kernel_size, stride=kernel_size // 2, bias=False)
         self.enc_LN = nn.GroupNorm(1, n_feats, eps=1e-8)
@@ -313,6 +313,7 @@ class Sandglasset2(BaseModel):
         self.chunk_size = chunk_size
         self.hop_size = hop_size
         self.kernel_size = kernel_size
+        self.model_name = "Sandglasset"
 
     def forward(self, input_wav):
         was_one_d = False

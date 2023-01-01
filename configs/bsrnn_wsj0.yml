@@ -1,13 +1,16 @@
 # Network config
 audionet:
-  audionet_name: EdgeFRCNNIterSum
+  audionet_name: BSRNN
   audionet_config:
-    out_channels: 128
-    in_channels: 512
-    num_blocks: 16
-    upsampling_depth: 5
-    enc_kernel_size: 2 # ms
-    num_sources: 2
+    win: 256
+    stride: 64
+    feature_dim: 128
+    num_spks: 2
+    num_layer: 1
+    num_repeat: 8
+    context: 0
+    dropout: 0.0
+    bi_comm: true
 
 # Loss config
 loss:
@@ -16,7 +19,7 @@ loss:
     sdr_type: pairwise_neg_snr
     config:
       pit_from: pw_mtx
-      threshold_byloss: true
+      threshold_byloss: false
   val:
     loss_func: PITLossWrapper
     sdr_type: pairwise_neg_sisdr
@@ -27,7 +30,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1,2]
+  gpus: [4,5,6,7]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -51,21 +54,21 @@ scheduler:
 
 # Data config
 datamodule:
-  data_name: WhamDataModule
+  data_name: LRS2DataModule
   data_config:
-    train_dir: DataPreProcess/Wham/tr
-    valid_dir: DataPreProcess/Wham/cv
-    test_dir: DataPreProcess/Wham/tt
+    train_dir: data-preprocess/WSJ0Audio/tr
+    valid_dir: data-preprocess/WSJ0Audio/cv
+    test_dir: data-preprocess/WSJ0Audio/tt
     n_src: 2
     sample_rate: 8000
     fps: 25
     segment: 4.0
     normalize_audio: false
-    batch_size: 1
+    batch_size: 4
     num_workers: 8
     pin_memory: true
     persistent_workers: false
     audio_only: true
 
 exp:
-  exp_name: EdgeFRCNNIterSum-Wham-win=2ms-batch=1-gpus=3-8khz-Noncausal
+  exp_name: bsrnn_wsj0_2mix_2gpu

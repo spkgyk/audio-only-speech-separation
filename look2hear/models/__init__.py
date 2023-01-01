@@ -4,21 +4,25 @@
 # Email: lk21@mails.tsinghua.edu.cn
 # LastEditTime: 2022-09-15 11:32:37
 ###
+from .bsrnn import BSRNN
 from .afrcnn import AFRCNN
-from .dprnn import DPRNNTasNet
+from .tdanet import TDANet
+from .gc3_network import TasNet
 from .sepformer import Sepformer
 from .convtasnet import ConvTasNet
-
-
-from .TDANet import TDANet
+from .dprnn_old import DPRNNTasNet
+from .sandglasset import Sandglasset
 
 
 __all__ = [
-    "ConvTasNet",
-    "Sepformer",
-    "DPRNNTasNet",
-    "AFRCNN",
+    "BSRNN",
     "TDANet",
+    "AFRCNN",
+    "TasNet",
+    "Sepformer",
+    "ConvTasNet",
+    "DPRNNTasNet",
+    "Sandglasset",
 ]
 
 

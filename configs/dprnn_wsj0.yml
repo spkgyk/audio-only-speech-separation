@@ -1,15 +1,15 @@
 # Network config
 audionet:
-  audionet_name: DPRNNTasNet
+  audionet_name: TasNet
   audionet_config:
-    feature_dim: 64
+    enc_dim: 64
+    bn_dim: 64
     hidden_dim: 128
-    win: 32
+    win: 16
     layer: 6
-    segment_size: 250
+    block_size: 100
     num_spk: 2
-    bidirectional: True
-    rnn_type: LSTM
+    module: DPRNN
 
 # Loss config
 loss:
@@ -18,7 +18,7 @@ loss:
     sdr_type: pairwise_neg_snr
     config:
       pit_from: pw_mtx
-      threshold_byloss: true
+      threshold_byloss: false
   val:
     loss_func: PITLossWrapper
     sdr_type: pairwise_neg_sisdr
@@ -29,7 +29,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1,2,3,4,5,6,7]
+  gpus: [0,1,2,3]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -55,9 +55,9 @@ scheduler:
 datamodule:
   data_name: LRS2DataModule
   data_config:
-    train_dir: DataPreProcess/WSJ0Audio/tr
-    valid_dir: DataPreProcess/WSJ0Audio/cv
-    test_dir: DataPreProcess/WSJ0Audio/tt
+    train_dir: data-preprocess/WSJ0Audio/tr
+    valid_dir: data-preprocess/WSJ0Audio/cv
+    test_dir: data-preprocess/WSJ0Audio/tt
     n_src: 2
     sample_rate: 8000
     fps: 25
@@ -70,4 +70,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: dprnn_baseline_wsj0_2mix_allgpu
+  exp_name: dprnn_baseline_wsj0_2mix_4gpu_bn64

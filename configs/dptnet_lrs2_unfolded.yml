@@ -1,26 +1,15 @@
 # Network config
 audionet:
-  audionet_name: Sepformer
+  audionet_name: TasNet
   audionet_config:
-    encoder_kernel_size: 16
-    encoder_in_nchannels: 1
-    encoder_out_nchannels: 256
-    masknet_chunksize: 250
-    masknet_numlayers: 2
-    masknet_norm: gLN
-    masknet_numspks: 2
-    intra_numlayers: 8
-    inter_numlayers: 8
-    intra_nhead: 8
-    inter_nhead: 8
-    intra_dffn: 1024
-    inter_dffn: 1024
-    intra_use_positional: true
-    inter_use_positional: true
-    intra_norm_before: true
-    inter_norm_before: true
-    intra_causal: false
-    inter_causal: false
+    enc_dim: 64
+    bn_dim: 64
+    hidden_dim: 128
+    win: 16
+    layer: 6
+    block_size: 100
+    num_spk: 2
+    module: Unfolded_DPTNet
 
 # Loss config
 loss:
@@ -29,7 +18,7 @@ loss:
     sdr_type: pairwise_neg_snr
     config:
       pit_from: pw_mtx
-      threshold_byloss: true
+      threshold_byloss: false
   val:
     loss_func: PITLossWrapper
     sdr_type: pairwise_neg_sisdr
@@ -40,7 +29,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1]
+  gpus: [0,1,2,3,4,5,6,7]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -64,21 +53,21 @@ scheduler:
 
 # Data config
 datamodule:
-  data_name: Libri2MixDataModule
+  data_name: LRS2DataModule
   data_config:
-    train_dir: DataPreProcess/Libri2Mix/train-100
-    valid_dir: DataPreProcess/Libri2Mix/dev
-    test_dir: DataPreProcess/Libri2Mix/test
+    train_dir: data-preprocess/LRS2Audio/tr
+    valid_dir: data-preprocess/LRS2Audio/cv
+    test_dir: data-preprocess/LRS2Audio/tt
     n_src: 2
-    sample_rate: 8000
+    sample_rate: 16000
     fps: 25
-    segment: 3.0
+    segment: 2.0
     normalize_audio: false
-    batch_size: 1
+    batch_size: 2
     num_workers: 8
     pin_memory: true
     persistent_workers: false
     audio_only: true
 
 exp:
-  exp_name: Sepformer-lib-baseline-Noncausal
+  exp_name: dptnet_unfolded_lrs2_2mix_8gpu

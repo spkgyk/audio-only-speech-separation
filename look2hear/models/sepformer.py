@@ -17,8 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from typing import Optional
-from . import normalizations
-from .base_model import BaseModel
+from .utils import normalizations, BaseModel
 
 
 class Encoder(nn.Module):
@@ -64,9 +63,7 @@ class PositionalEncoding(nn.Module):
         self.max_len = max_len
         pe = torch.zeros(self.max_len, input_size, requires_grad=False)
         positions = torch.arange(0, self.max_len).unsqueeze(1).float()
-        denominator = torch.exp(
-            torch.arange(0, input_size, 2).float() * -(math.log(10000.0) / input_size)
-        )
+        denominator = torch.exp(torch.arange(0, input_size, 2).float() * -(math.log(10000.0) / input_size))
 
         pe[:, 0::2] = torch.sin(positions * denominator)
         pe[:, 1::2] = torch.cos(positions * denominator)
@@ -243,7 +240,12 @@ class PositionalwiseFeedForward(nn.Module):
     """
 
     def __init__(
-        self, d_ffn, input_shape=None, input_size=None, dropout=0.0, activation=nn.ReLU,
+        self,
+        d_ffn,
+        input_shape=None,
+        input_size=None,
+        dropout=0.0,
+        activation=nn.ReLU,
     ):
         super().__init__()
 
@@ -307,13 +309,9 @@ class TransformerEncoderLayer(nn.Module):
     ):
         super().__init__()
 
-        self.self_att = MultiheadAttention(
-            nhead=nhead, d_model=d_model, dropout=dropout, kdim=kdim, vdim=vdim,
-        )
+        self.self_att = MultiheadAttention(nhead=nhead, d_model=d_model, dropout=dropout, kdim=kdim, vdim=vdim)
 
-        self.pos_ffn = PositionalwiseFeedForward(
-            d_ffn=d_ffn, input_size=d_model, dropout=dropout, activation=activation,
-        )
+        self.pos_ffn = PositionalwiseFeedForward(d_ffn=d_ffn, input_size=d_model, dropout=dropout, activation=activation)
 
         self.norm1 = nn.LayerNorm(d_model, eps=1e-6, elementwise_affine=True)
         self.norm2 = nn.LayerNorm(d_model, eps=1e-6, elementwise_affine=True)
@@ -572,14 +570,8 @@ class TransformerBlock(nn.Module):
                 [0., 0., 0.]])
         """
         seq_len = padded_input.shape[1]
-        mask = (
-            torch.triu(torch.ones((seq_len, seq_len), device=padded_input.device)) == 1
-        ).transpose(0, 1)
-        mask = (
-            mask.float()
-            .masked_fill(mask == 0, float("-inf"))
-            .masked_fill(mask == 1, float(0.0))
-        )
+        mask = (torch.triu(torch.ones((seq_len, seq_len), device=padded_input.device)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float("-inf")).masked_fill(mask == 1, float(0.0))
         return mask.detach().to(padded_input.device)
 
 
@@ -701,13 +693,7 @@ class Dual_Path_Model(nn.Module):
 
         self.dual_mdl = nn.ModuleList([])
         for i in range(num_layers):
-            self.dual_mdl.append(
-                copy.deepcopy(
-                    Dual_Computation_Block(
-                        intra_model, inter_model, out_channels, norm,
-                    )
-                )
-            )
+            self.dual_mdl.append(copy.deepcopy(Dual_Computation_Block(intra_model, inter_model, out_channels, norm)))
 
         self.conv2d = nn.Conv2d(out_channels, out_channels * num_spks, kernel_size=1)
         self.end_conv1x1 = nn.Conv1d(out_channels, in_channels, 1, bias=False)
@@ -715,9 +701,7 @@ class Dual_Path_Model(nn.Module):
         self.activation = nn.ReLU()
         # gated output layer
         self.output = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1), nn.Tanh())
-        self.output_gate = nn.Sequential(
-            nn.Conv1d(out_channels, out_channels, 1), nn.Sigmoid()
-        )
+        self.output_gate = nn.Sequential(nn.Conv1d(out_channels, out_channels, 1), nn.Sigmoid())
 
     def forward(self, x):
         """Returns the output tensor.
@@ -919,12 +903,12 @@ class Sepformer(BaseModel):
 
     def __init__(
         self,
-        encoder_kernel_size=32,
+        encoder_kernel_size=16,
         encoder_in_nchannels=1,
         encoder_out_nchannels=256,
         masknet_chunksize=250,
         masknet_numlayers=2,
-        masknet_norm="LN",
+        masknet_norm="gLN",
         masknet_numspks=2,
         intra_numlayers=8,
         inter_numlayers=8,
@@ -936,9 +920,9 @@ class Sepformer(BaseModel):
         inter_use_positional=True,
         intra_norm_before=True,
         inter_norm_before=True,
-        intra_causal=True,
-        inter_causal=True,
-        sample_rate=16000,
+        intra_causal=False,
+        inter_causal=False,
+        sample_rate=8000,
     ):
 
         super(Sepformer, self).__init__(sample_rate=sample_rate)
@@ -985,6 +969,7 @@ class Sepformer(BaseModel):
             bias=False,
         )
         self.num_spks = masknet_numspks
+        self.model_name = "Sepformer"
 
         # reinitialize the parameters
         for module in [self.encoder, self.masknet, self.decoder]:
