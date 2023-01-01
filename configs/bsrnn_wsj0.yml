@@ -7,7 +7,7 @@ audionet:
     feature_dim: 128
     num_spks: 2
     num_layer: 1
-    num_repeat: 6
+    num_repeat: 8
     context: 0
     dropout: 0.0
     bi_comm: true
@@ -30,7 +30,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1,2,3,4,5,6,7]
+  gpus: [4,5,6]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -64,11 +64,11 @@ datamodule:
     fps: 25
     segment: 4.0
     normalize_audio: false
-    batch_size: 2
+    batch_size: 4
     num_workers: 8
     pin_memory: true
     persistent_workers: false
     audio_only: true
 
 exp:
-  exp_name: bsrnn_wsj0_2mix_8gpu
+  exp_name: bsrnn_wsj0_2mix_2gpu

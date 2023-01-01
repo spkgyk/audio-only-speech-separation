@@ -50,7 +50,7 @@ if __name__ == "__main__":
     print("\nGPU Results")
 
     test_model(BSRNN(sample_rate=8000, win=256, stride=64), epochs=50)
-    test_model(BSRNN(sample_rate=16000, win=1024, stride=256), epochs=50)
+    test_model(BSRNN(sample_rate=16000, win=512, stride=128), epochs=50)
     test_model(BSRNN(sample_rate=44100, win=1024, stride=256), epochs=50)
     print()
 

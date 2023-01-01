@@ -68,7 +68,7 @@ class BSRNN(BaseModel):
         feature_dim=128,
         num_spks=2,
         num_layer=1,
-        num_repeat=6,
+        num_repeat=8,
         context=0,
         dropout=0.0,
         bi_comm=True,
@@ -168,7 +168,7 @@ class BSRNN(BaseModel):
             input,
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win).type(input.type()),
+            window=torch.hann_window(self.win).to(input.device).type(input.type()),
             return_complex=True,
         )
 
@@ -224,7 +224,7 @@ class BSRNN(BaseModel):
             est_spec.view(batch_size * nch * self.num_spks, self.enc_dim, -1),
             n_fft=self.win,
             hop_length=self.stride,
-            window=torch.hann_window(self.win).type(input.type()),
+            window=torch.hann_window(self.win).to(input.device).type(input.type()),
             length=nsample,
         )
 
