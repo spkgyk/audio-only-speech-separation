@@ -70,4 +70,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: dptnet_unfolded_lrs2_2mix_8gpu
+  exp_name: dptnet_unfolded_lrs2_2mix_8gpu_bn64
