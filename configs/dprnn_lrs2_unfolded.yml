@@ -7,9 +7,11 @@ audionet:
     hidden_dim: 128
     win: 16
     layer: 6
-    block_size: 100
     num_spk: 2
-    module: Unfolded_DPRNN
+    module: DPRNN
+    group_size: 1
+    block_size: 100
+    unfold: True
 
 # Loss config
 loss:
