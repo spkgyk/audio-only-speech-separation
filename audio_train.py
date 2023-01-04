@@ -19,6 +19,7 @@ import pytorch_lightning as pl
 
 from look2hear.system import make_optimizer
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.strategies.ddp import DDPStrategy
 from pytorch_lightning.callbacks.progress.rich_progress import *
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from look2hear.utils import print_only, MyRichProgressBar, RichProgressBarTheme
@@ -122,7 +123,7 @@ def main(config):
         default_root_dir=exp_dir,
         gpus=gpus,
         accelerator=distributed_backend,
-        strategy="ddp",
+        strategy=DDPStrategy(find_unused_parameters=False),
         limit_train_batches=1.0,  # Useful for fast experiment
         gradient_clip_val=5.0,
         logger=comet_logger,
