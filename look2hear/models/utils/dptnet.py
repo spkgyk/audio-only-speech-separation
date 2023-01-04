@@ -2,9 +2,6 @@
 Adopted from https://github.com/ujscjj/DPTNet
 Modified by Yi Luo {yl3364@columbia.edu}
 """
-
-import copy
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -45,18 +42,17 @@ class TransformerEncoderLayer(nn.Module):
         >>> out = encoder_layer(src)
     """
 
-    def __init__(self, d_model, nhead, dim_feedforward=256, dropout=0, activation="relu"):
+    def __init__(self, d_model, nhead, dropout=0, activation="relu"):
         super(TransformerEncoderLayer, self).__init__()
+
         self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout)
-        # Implementation of Feedforward model
-        # self.linear1 = Linear(d_model, dim_feedforward)
         self.linear1 = LSTM(d_model, d_model * 2, 1, bidirectional=True)
-        self.dropout = Dropout(dropout)
-        # self.linear2 = Linear(dim_feedforward, d_model)
         self.linear2 = Linear(d_model * 2 * 2, d_model)
 
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
+
+        self.dropout = Dropout(dropout)
         self.dropout1 = Dropout(dropout)
         self.dropout2 = Dropout(dropout)
 
@@ -87,10 +83,10 @@ class TransformerEncoderLayer(nn.Module):
 
 
 class SingleTransformer(nn.Module):
-    def __init__(self, input_size, dim_feedforward):
+    def __init__(self, input_size):
         super(SingleTransformer, self).__init__()
 
-        self.transformer = TransformerEncoderLayer(d_model=input_size, nhead=4, dim_feedforward=dim_feedforward, dropout=0)
+        self.transformer = TransformerEncoderLayer(d_model=input_size, nhead=4, dropout=0)
 
     def forward(self, input):
         # input shape: batch, seq, dim
@@ -118,8 +114,8 @@ class DPTNet(nn.Module):
         self.col_xfmr = nn.ModuleList([])
 
         if self.unfold:
-            row_xfmr = SingleTransformer(input_size // num_group, hidden_size // num_group)
-            col_xfmr = SingleTransformer(input_size // num_group, hidden_size // num_group)
+            row_xfmr = SingleTransformer(input_size // num_group)
+            col_xfmr = SingleTransformer(input_size // num_group)
             self.concat_block = nn.Sequential(
                 nn.Conv2d(input_size // num_group, input_size // num_group, 1, 1, groups=input_size // num_group),
                 nn.PReLU(),
@@ -129,8 +125,8 @@ class DPTNet(nn.Module):
             if self.num_group > 1:
                 self.TAC.append(TAC(input_size // num_group, hidden_size * 3 // num_group))
 
-            self.row_xfmr.append(row_xfmr if self.unfold else SingleTransformer(input_size // num_group, hidden_size // num_group))
-            self.col_xfmr.append(col_xfmr if self.unfold else SingleTransformer(input_size // num_group, hidden_size // num_group))
+            self.row_xfmr.append(row_xfmr if self.unfold else SingleTransformer(input_size // num_group))
+            self.col_xfmr.append(col_xfmr if self.unfold else SingleTransformer(input_size // num_group))
 
         self.output = nn.Conv2d(input_size // num_group, output_size // num_group, 1)
 

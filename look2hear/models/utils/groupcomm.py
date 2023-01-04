@@ -64,11 +64,7 @@ class DP_Wrapper(nn.Module):
 
         assert module in [
             "DPRNN",
-            "GC_DPRNN",
-            "Unfolded_DPRNN",
             "DPTNet",
-            "GC_DPTNet",
-            "Unfolded_DPTNet",
         ]
 
         self.input_dim = input_dim
