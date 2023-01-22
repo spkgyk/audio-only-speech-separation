@@ -2,8 +2,8 @@
 audionet:
   audionet_name: BSRNN
   audionet_config:
-    win: 256
-    stride: 64
+    win: 2048
+    stride: 512
     feature_dim: 128
     num_spks: 2
     num_layer: 1
@@ -30,7 +30,7 @@ loss:
 # Training config
 training:
   system: AudioLightningModule
-  gpus: [0,1,2,3,4,5,6,7]
+  gpus:  [0,1,2,3,4,5,6,7]
   parallel: ddp
   epochs: 500
   early_stop:
@@ -71,4 +71,4 @@ datamodule:
     audio_only: true
 
 exp:
-  exp_name: bsrnn_wsj0_2mix_8gpu_256_64_6
+  exp_name: bsrnn_wsj0_2mix_8gpu_2048_512_6

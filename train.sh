@@ -5,8 +5,8 @@
  # @LastEditTime: 2022-06-02 16:25:26
 ### 
 file_list=(            
-            "audio_train.py --conf-dir=configs/dptnet_lrs2.yml"
-            "audio_train.py --conf-dir=configs/dptnet_lrs2_unfolded.yml"
+            "audio_train.py --conf-dir=configs/bsrnn_wsj0_2048.yml"
+            "audio_train.py --conf-dir=configs/bsrnn_wsj0.yml"
             )
 
 for py_file in "${file_list[@]}"
